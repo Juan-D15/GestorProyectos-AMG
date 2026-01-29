@@ -49,5 +49,11 @@ htmlcov/
 .idea/
 *.code-workspace
 
-# Si luego agregas tooling de Node
+# Tooling de Node
 node_modules/
+
+# --- ReactPy ---
+.reactpy/
+
+# --- Tailwind ---
+/static/css/output.css

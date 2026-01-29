@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "@tailwindcss/cli": "^4.1.18",
+    "daisyui": "^5.5.14",
+    "tailwindcss": "^4.1.18"
+  },
+  "scripts": {
+    "build:css": "npx @tailwindcss/cli -c ./tailwind.config.js -i ./webAMG/static/src/css/styles.css -o ./webAMG/static/dist/css/styles.css",
+    "watch:css": "npx @tailwindcss/cli -c ./tailwind.config.js -i ./webAMG/static/src/css/styles.css -o ./webAMG/static/dist/css/styles.css --watch"
+  }
+}
