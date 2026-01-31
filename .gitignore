@@ -57,3 +57,7 @@ node_modules/
 
 # --- Tailwind ---
 /static/css/output.css
+/webAMG/static/dist/
+
+*.md
+BasedeDatos.txt
