@@ -11,25 +11,28 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('KEY_DJANGO')
+SECRET_KEY = os.getenv('KEY_DJANGO', 'django-insecure-change-this-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG')
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'reactpy_django',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'webAMG',
+    'webAMG.apps.WebamgConfig',
 ]
+ASGI_APPLICATION = "config.asgi.application"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -76,6 +79,14 @@ DATABASES = {
 }
 
 
+# Custom User Model
+AUTH_USER_MODEL = 'webAMG.User'
+
+# Custom Authentication Backend
+AUTHENTICATION_BACKENDS = [
+    'webAMG.authentication.CustomUserBackend',
+]
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -100,7 +111,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Guatemala'
 
 USE_I18N = True
 
@@ -112,3 +123,26 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'webAMG' / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# ReactPy-Django Configuration
+REACTPY_DATABASE = {
+    'BACKEND': 'reactpy_django.database.backends.default',
+}
+REACTPY_REGISTERED_COMPONENTS = {
+    # Componentes de prueba
+    'simple': 'webAMG.core.components.simple',
+    'hello_world': 'webAMG.core.components.hello_world',
+    'counter': 'webAMG.core.components.counter',
+    'test_component': 'webAMG.core.components.test_component',
+    
+    # Componentes del Dashboard
+    'dashboard_stat_card': 'webAMG.core.components.dashboard_stat_card',
+    'project_row': 'webAMG.core.components.project_row',
+    'user_avatar': 'webAMG.core.components.user_avatar',
+    'sidebar_item': 'webAMG.core.components.sidebar_item',
+    'notification_badge': 'webAMG.core.components.notification_badge',
+    'loading_spinner': 'webAMG.core.components.loading_spinner',
+    'empty_state': 'webAMG.core.components.empty_state',
+    'confirm_dialog': 'webAMG.core.components.confirm_dialog',
+}

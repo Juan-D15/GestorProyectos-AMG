@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block dashboard_sidebar %}
+<!-- Sidebar del Dashboard -->
+<aside class="w-64 bg-white border-r border-gray-200 flex flex-col fixed h-full z-30">
+    <!-- Logo Section -->
+    <div class="p-6 border-b border-gray-100">
+        <div class="flex items-center space-x-3">
+            <img src="{% static 'src/img/logosMG_png/3.png' %}" alt="Logo Maya Guatemala" class="h-10 w-auto">
+            <div>
+                <h1 class="text-lg font-bold text-gray-900">Maya Guatemala</h1>
+                <p class="text-xs text-gray-500">Sistema de Gestión</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+        <a href="{% url 'dashboard' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+            <i class="fas fa-th-large text-base flex-shrink-0"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <a href="{% url 'dashboard_projects' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+            <i class="fas fa-file-alt text-base flex-shrink-0"></i>
+            <span>Proyectos</span>
+        </a>
+
+        <a href="{% url 'dashboard_beneficiaries' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+            <i class="fas fa-users text-base flex-shrink-0"></i>
+            <span>Beneficiarios</span>
+        </a>
+
+        <a href="{% url 'dashboard_budget' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+            <i class="fas fa-dollar-sign text-base flex-shrink-0"></i>
+            <span>Ejecución Presupuestaria</span>
+        </a>
+
+        <a href="{% url 'dashboard_reports' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium bg-[#8a4534]/10 text-[#8a4534] transition-colors">
+            <i class="fas fa-chart-bar text-base flex-shrink-0"></i>
+            <span>Reportes</span>
+        </a>
+
+        <a href="{% url 'dashboard_statistics' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+            <i class="fas fa-chart-line text-base flex-shrink-0"></i>
+            <span>Estadísticas</span>
+        </a>
+
+        {% if request.user.role == 'administrador' %}
+        <a href="{% url 'dashboard_users' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+            <i class="fas fa-user-shield text-base flex-shrink-0"></i>
+            <span>Usuarios</span>
+        </a>
+        {% endif %}
+    </nav>
+
+    <!-- User Section -->
+    <div class="p-4 border-t border-gray-100">
+        <div class="flex items-center space-x-3 mb-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                <span>{{ user.full_name|slice:":2"|upper }}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900 truncate">{{ user.full_name }}</p>
+                <p class="text-xs text-gray-500">{{ user.role|title }}</p>
+            </div>
+        </div>
+        <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-[#8a4534] hover:bg-red-50 rounded-lg transition-colors">
+                <i class="fas fa-sign-out-alt text-sm"></i>
+                <span>Cerrar Sesión</span>
+            </button>
+        </form>
+    </div>
+</aside>
+{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen bg-gray-50">
+    <!-- Main Content -->
+    <main class="flex-1 ml-64">
+        <!-- Top Bar -->
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-900">Reportes</h2>
+                    <p class="text-sm text-gray-500">Generación de reportes y estadísticas</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="{% url 'dashboard_profile' %}" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center text-white text-sm font-semibold">
+                            <span>{{ user.full_name|slice:":2"|upper }}</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <div class="p-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+                <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center">
+                    <i class="fas fa-chart-bar text-3xl text-white"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Reportes</h3>
+                <p class="text-gray-500 mb-6">Esta sección está en desarrollo</p>
+                <a href="{% url 'dashboard' %}" class="inline-flex items-center space-x-2 px-6 py-3 bg-[#8a4534] hover:bg-[#a05240] text-white font-medium rounded-lg transition-colors">
+                    <i class="fas fa-arrow-left text-sm"></i>
+                    <span>Volver al Dashboard</span>
+                </a>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
