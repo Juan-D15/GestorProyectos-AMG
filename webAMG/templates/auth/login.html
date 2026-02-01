@@ -100,34 +100,11 @@
     </div>
 </div>
 
-<script>
-function togglePassword() {
-    const passwordInput = document.querySelector('input[name="password"]');
-    const eyeIcon = document.getElementById('eyeIcon');
-    const eyeOffIcon = document.getElementById('eyeOffIcon');
-    
-    if (passwordInput && eyeIcon && eyeOffIcon) {
-        const isPassword = passwordInput.getAttribute('type') === 'password';
-        passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
-        
-        // Toggle visibility using display property for more reliable behavior
-        if (isPassword) {
-            eyeIcon.style.display = 'none';
-            eyeOffIcon.style.display = 'inline-block';
-        } else {
-            eyeIcon.style.display = 'inline-block';
-            eyeOffIcon.style.display = 'none';
-        }
-    }
-}
-</script>
+<script src="{% static 'src/js/login.js' %}"></script>
 
 {% if logout_message %}
 <script>
-// Redirect after logout message (3 seconds)
-setTimeout(function() {
-    window.location.href = '/login/';
-}, 3000);
+redirectAfterLogout();
 </script>
 {% endif %}
 {% endblock %}

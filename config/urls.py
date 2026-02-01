@@ -20,6 +20,7 @@ urlpatterns = [
     # Paginas del Dashboard (requieren autenticacion)
     path("dashboard/", views_pages.dashboard, name="dashboard"),
     path("dashboard/proyectos/", views_pages.projects_page, name="dashboard_projects"),
+    path("dashboard/proyectos/crear/", views_pages.project_create_page, name="project_create"),
     path("dashboard/beneficiarios/", views_pages.beneficiaries_page, name="dashboard_beneficiaries"),
     path("dashboard/presupuesto/", views_pages.budget_page, name="dashboard_budget"),
     path("dashboard/reportes/", views_pages.reports_page, name="dashboard_reports"),
@@ -29,7 +30,7 @@ urlpatterns = [
     # Gestion de Usuarios (solo administradores)
     path("dashboard/usuarios/", views_pages.dashboard_users, name="dashboard_users"),
     path("dashboard/usuarios/crear/", views_pages.user_create, name="user_create"),
-    path("dashboard/usuarios/editar/<int:user_id>/", views_pages.user_edit, name="user_edit"),
+    path("dashboard/usuarios/editar/", views_pages.user_edit, name="user_edit"),
     path("dashboard/usuarios/eliminar/", views_pages.user_delete, name="user_delete"),
     
     # Django Admin

@@ -1,249 +1,132 @@
-{% extends "base.html" %}
+{% extends "base_dashboard.html" %}
 {% load static %}
 
-{% block dashboard_sidebar %}
-<!-- Sidebar del Dashboard -->
-<aside class="w-64 bg-white border-r border-gray-200 flex flex-col fixed h-full z-30">
-    <!-- Logo Section -->
-    <div class="p-6 border-b border-gray-100">
-        <div class="flex items-center space-x-3">
-            <img src="{% static 'src/img/logosMG_png/3.png' %}" alt="Logo Maya Guatemala" class="h-10 w-auto">
+{% block active_users_class %}bg-[#8a4534]/10 text-[#8a4534]{% endblock %}
+{% block page_title %}Gestión de Usuarios{% endblock %}
+{% block page_subtitle %}Administrar usuarios del sistema{% endblock %}
+
+{% block dashboard_content %}
+<!-- Action Cards -->
+<div class="mb-8">
+    <!-- Create User Card -->
+    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 card-hover cursor-pointer w-fit" onclick="openModal('create')">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[#8a4534] to-[#a05240] flex items-center justify-center">
+                <i class="fas fa-user-plus text-xl text-white"></i>
+            </div>
             <div>
-                <h1 class="text-lg font-bold text-gray-900">Maya Guatemala</h1>
-                <p class="text-xs text-gray-500">Sistema de Gestión</p>
+                <h3 class="text-lg font-semibold text-gray-900">Crear Usuario</h3>
+                <p class="text-sm text-gray-500">Agregar un nuevo usuario al sistema</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100">
+    <!-- Table Header -->
+    <div class="p-6 border-b border-gray-100">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Usuarios del Sistema</h3>
+            <div class="flex items-center space-x-2">
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        placeholder="Buscar por nombre de usuario..." 
+                        onkeyup="filterUsers()"
+                        class="w-64 pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]"
+                    >
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Navigation -->
-    <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
-        <a href="{% url 'dashboard' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-            <i class="fas fa-th-large text-base flex-shrink-0"></i>
-            <span>Dashboard</span>
-        </a>
-
-        <a href="{% url 'dashboard_projects' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-            <i class="fas fa-file-alt text-base flex-shrink-0"></i>
-            <span>Proyectos</span>
-        </a>
-
-        <a href="{% url 'dashboard_beneficiaries' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-            <i class="fas fa-users text-base flex-shrink-0"></i>
-            <span>Beneficiarios</span>
-        </a>
-
-        <a href="{% url 'dashboard_budget' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-            <i class="fas fa-dollar-sign text-base flex-shrink-0"></i>
-            <span>Ejecución Presupuestaria</span>
-        </a>
-
-        <a href="{% url 'dashboard_reports' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-            <i class="fas fa-chart-bar text-base flex-shrink-0"></i>
-            <span>Reportes</span>
-        </a>
-
-        <a href="{% url 'dashboard_statistics' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-            <i class="fas fa-chart-line text-base flex-shrink-0"></i>
-            <span>Estadísticas</span>
-        </a>
-
-        {% if request.user.role == 'administrador' %}
-        <a href="{% url 'dashboard_users' %}" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium bg-[#8a4534]/10 text-[#8a4534] transition-colors">
-            <i class="fas fa-user-shield text-base flex-shrink-0"></i>
-            <span>Usuarios</span>
-        </a>
-        {% endif %}
-    </nav>
-
-    <!-- User Section -->
-    <div class="p-4 border-t border-gray-100">
-        <div class="flex items-center space-x-3 mb-3">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                <span>{{ user.full_name|slice:":2"|upper }}</span>
-            </div>
-            <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">{{ user.full_name }}</p>
-                <p class="text-xs text-gray-500">{{ user.role|title }}</p>
-            </div>
-        </div>
-        <form action="{% url 'logout' %}" method="post">
-            {% csrf_token %}
-            <button type="submit" class="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-[#8a4534] hover:bg-red-50 rounded-lg transition-colors">
-                <i class="fas fa-sign-out-alt text-sm"></i>
-                <span>Cerrar Sesión</span>
-            </button>
-        </form>
-    </div>
-</aside>
-{% endblock %}
-
-{% block content %}
-<div class="flex min-h-screen bg-gray-50">
-    <!-- Main Content -->
-    <main class="flex-1 ml-64">
-        <!-- Top Bar -->
-        <header class="bg-white border-b border-gray-200 px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-xl font-semibold text-gray-900">Gestión de Usuarios</h2>
-                    <p class="text-sm text-gray-500">Administrar usuarios del sistema</p>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="{% url 'dashboard_profile' %}" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center text-white text-sm font-semibold">
-                            <span>{{ user.full_name|slice:":2"|upper }}</span>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </header>
-
-        <!-- Dashboard Content -->
-        <div class="p-6">
-            <!-- Action Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <!-- Create User Card -->
-                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 card-hover cursor-pointer" onclick="openModal('create')">
-                    <div class="flex flex-col items-center text-center">
-                        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-[#8a4534] to-[#a05240] flex items-center justify-center mb-4">
-                            <i class="fas fa-user-plus text-2xl text-white"></i>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Crear Usuario</h3>
-                        <p class="text-sm text-gray-500">Agregar un nuevo usuario al sistema</p>
-                    </div>
-                </div>
-
-                <!-- Edit User Card -->
-                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 card-hover cursor-pointer" onclick="openModal('edit')">
-                    <div class="flex flex-col items-center text-center">
-                        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-[#334e76] to-[#4a6fa5] flex items-center justify-center mb-4">
-                            <i class="fas fa-user-edit text-2xl text-white"></i>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Editar Usuario</h3>
-                        <p class="text-sm text-gray-500">Modificar información de usuarios existentes</p>
-                    </div>
-                </div>
-
-                <!-- Delete User Card -->
-                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 card-hover cursor-pointer" onclick="openModal('delete')">
-                    <div class="flex flex-col items-center text-center">
-                        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center mb-4">
-                            <i class="fas fa-user-times text-2xl text-white"></i>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Eliminar Usuario</h3>
-                        <p class="text-sm text-gray-500">Remover usuarios del sistema</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Users Table -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <!-- Table Header -->
-                <div class="p-6 border-b border-gray-100">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900">Usuarios del Sistema</h3>
+    <!-- Table Content -->
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b border-gray-100">
+                    <th class="text-left py-4 px-4 text-sm font-semibold text-gray-600">Usuario</th>
+                    <th class="text-left py-4 px-4 text-sm font-semibold text-gray-600">Email</th>
+                    <th class="text-left py-4 px-4 text-sm font-semibold text-gray-600">Rol</th>
+                    <th class="text-left py-4 px-4 text-sm font-semibold text-gray-600">Estado</th>
+                    <th class="text-left py-4 px-4 text-sm font-semibold text-gray-600">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody">
+                {% for user_obj in users %}
+                <tr class="border-b border-gray-50 hover:bg-gray-50 user-row cursor-pointer" data-username="{{ user_obj.username }}" data-user-id="{{ user_obj.id }}" onclick="selectUser(this)">
+                    <td class="py-4 px-4">
                         <div class="flex items-center space-x-2">
-                            <div class="relative">
-                                <input 
-                                    type="text" 
-                                    id="searchInput" 
-                                    placeholder="Buscar por nombre de usuario..." 
-                                    onkeyup="filterUsers()"
-                                    class="w-64 pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]"
-                                >
-                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                                <span>{{ user_obj.full_name|slice:":2"|upper }}</span>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">{{ user_obj.full_name }}</p>
+                                <p class="text-xs text-gray-500">@{{ user_obj.username }}</p>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Table Content -->
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead>
-                            <tr class="border-b border-gray-100">
-                                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-600">Usuario</th>
-                                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-600">Email</th>
-                                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-600">Rol</th>
-                                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-600">Estado</th>
-                                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-600">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="usersTableBody">
-                            {% for user_obj in users %}
-                            <tr class="border-b border-gray-50 hover:bg-gray-50 user-row" data-username="{{ user_obj.username }}">
-                                <td class="py-4 px-4">
-                                    <div class="flex items-center space-x-2">
-                                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                                            <span>{{ user_obj.full_name|slice:":2"|upper }}</span>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm font-medium text-gray-900">{{ user_obj.full_name }}</p>
-                                            <p class="text-xs text-gray-500">@{{ user_obj.username }}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="py-4 px-4">
-                                    <span class="text-sm text-gray-600">{{ user_obj.email }}</span>
-                                </td>
-                                <td class="py-4 px-4">
-                                    <span class="px-3 py-1 rounded-full text-xs font-medium 
-                                        {% if user_obj.role == 'administrador' %}bg-purple-100 text-purple-700
-                                        {% else %}bg-blue-100 text-blue-700{% endif %}">
-                                        {{ user_obj.role|title }}
-                                    </span>
-                                </td>
-                                <td class="py-4 px-4">
-                                    <span class="px-3 py-1 rounded-full text-xs font-medium 
-                                        {% if user_obj.is_active %}bg-green-100 text-green-700
-                                        {% else %}bg-red-100 text-red-700{% endif %}">
-                                        {% if user_obj.is_active %}Activo{% else %}Inactivo{% endif %}
-                                    </span>
-                                </td>
-                                <td class="py-4 px-4">
-                                    <div class="flex items-center space-x-2">
-                                        <button 
-                                            class="p-2 text-gray-400 hover:text-[#334e76] hover:bg-blue-50 rounded-lg transition-colors"
-                                            onclick="editUser(this)"
-                                            data-user-id="{{ user_obj.id }}"
-                                            data-username="{{ user_obj.username }}"
-                                            data-email="{{ user_obj.email }}"
-                                            data-full-name="{{ user_obj.full_name }}"
-                                            data-role="{{ user_obj.role }}"
-                                            data-is-active="{{ user_obj.is_active|lower }}"
-                                            title="Editar"
-                                        >
-                                            <i class="fas fa-edit text-sm"></i>
-                                        </button>
-                                        <button 
-                                            class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                            onclick="deleteUser(this)"
-                                            data-user-id="{{ user_obj.id }}"
-                                            data-username="{{ user_obj.username }}"
-                                            data-full-name="{{ user_obj.full_name }}"
-                                            title="Eliminar"
-                                        >
-                                            <i class="fas fa-trash text-sm"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="8" class="py-12 text-center text-gray-500">
-                                    <div class="flex flex-col items-center">
-                                        <i class="fas fa-users text-4xl text-gray-300 mb-3"></i>
-                                        <p class="text-sm">No hay usuarios registrados</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </main>
+                    </td>
+                    <td class="py-4 px-4">
+                        <span class="text-sm text-gray-600">{{ user_obj.email }}</span>
+                    </td>
+                    <td class="py-4 px-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-medium 
+                            {% if user_obj.role == 'administrador' %}bg-purple-100 text-purple-700
+                            {% else %}bg-blue-100 text-blue-700{% endif %}">
+                            {{ user_obj.role|title }}
+                        </span>
+                    </td>
+                    <td class="py-4 px-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-medium 
+                            {% if user_obj.is_active %}bg-green-100 text-green-700
+                            {% else %}bg-red-100 text-red-700{% endif %}">
+                            {% if user_obj.is_active %}Activo{% else %}Inactivo{% endif %}
+                        </span>
+                    </td>
+                    <td class="py-4 px-4">
+                        <div class="flex items-center space-x-2">
+                            <button 
+                                class="p-2 text-gray-400 hover:text-[#334e76] hover:bg-blue-50 rounded-lg transition-colors"
+                                onclick="editUser(event, this)"
+                                data-user-id="{{ user_obj.id }}"
+                                data-username="{{ user_obj.username }}"
+                                data-email="{{ user_obj.email }}"
+                                data-full-name="{{ user_obj.full_name }}"
+                                data-role="{{ user_obj.role }}"
+                                data-is-active="{{ user_obj.is_active|lower }}"
+                                title="Editar"
+                            >
+                                <i class="fas fa-edit text-sm"></i>
+                            </button>
+                            <button 
+                                class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                onclick="deleteUser(event, this)"
+                                data-user-id="{{ user_obj.id }}"
+                                data-username="{{ user_obj.username }}"
+                                data-full-name="{{ user_obj.full_name }}"
+                                title="Eliminar"
+                            >
+                                <i class="fas fa-trash text-sm"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="py-12 text-center text-gray-500">
+                        <div class="flex flex-col items-center">
+                            <i class="fas fa-users text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-sm">No hay usuarios registrados</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- Create User Modal -->
@@ -372,17 +255,38 @@
                 </button>
             </div>
         </div>
-        <div class="p-6">
-            <div class="flex items-center justify-center mb-6">
-                <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-                    <i class="fas fa-exclamation-triangle text-3xl text-red-600"></i>
+        <form method="post" action="{% url 'user_delete' %}">
+            {% csrf_token %}
+            <input type="hidden" name="user_id" id="deleteUserId">
+            
+            <div class="p-6">
+                <div class="flex items-center justify-center mb-6">
+                    <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-3xl text-red-600"></i>
+                    </div>
                 </div>
-            </div>
-            <p class="text-center text-gray-600 mb-2">¿Estás seguro de que deseas eliminar este usuario?</p>
-            <p class="text-center text-sm text-gray-500 mb-6">Esta acción no se puede deshacer.</p>
-            <form method="post" action="{% url 'user_delete' %}">
-                {% csrf_token %}
-                <input type="hidden" name="user_id" id="deleteUserId">
+                <p class="text-center text-gray-600 mb-2">¿Estás seguro de que deseas eliminar este usuario?</p>
+                <p class="text-center text-sm text-gray-500 mb-6">Esta acción no se puede deshacer.</p>
+                
+                <!-- Password Confirmation -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Confirma tu contraseña de administrador:</label>
+                    <div class="relative">
+                        <input
+                            type="password"
+                            id="deletePassword"
+                            name="admin_password"
+                            placeholder="Ingresa tu contraseña"
+                            required
+                            class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]"
+                        >
+                        <button type="button" onclick="toggleDeletePassword()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 z-10 cursor-pointer">
+                            <i class="fas fa-eye" id="deletePasswordEye"></i>
+                            <i class="fas fa-eye-slash" id="deletePasswordEyeSlash" style="display: none;"></i>
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="flex items-center space-x-3">
                     <button type="button" onclick="closeModal('delete')" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                         Cancelar
@@ -391,97 +295,10 @@
                         Eliminar Usuario
                     </button>
                 </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 </div>
 
-<script>
-// Modal functions
-function openModal(type) {
-    document.getElementById(type + 'Modal').classList.remove('hidden');
-}
-
-function closeModal(type) {
-    document.getElementById(type + 'Modal').classList.add('hidden');
-}
-
-// Edit user function
-function editUser(button) {
-    const userId = button.getAttribute('data-user-id');
-    document.getElementById('editUserId').value = userId;
-    document.getElementById('editUsername').value = button.getAttribute('data-username');
-    document.getElementById('editEmail').value = button.getAttribute('data-email');
-    document.getElementById('editFullName').value = button.getAttribute('data-full-name');
-    document.getElementById('editRole').value = button.getAttribute('data-role');
-    document.getElementById('editIsActive').checked = button.getAttribute('data-is-active') === 'true';
-    document.getElementById('editForm').action = '/dashboard/usuarios/editar/' + userId + '/';
-    openModal('edit');
-}
-
-// Delete user function
-function deleteUser(button) {
-    const userId = button.getAttribute('data-user-id');
-    const username = button.getAttribute('data-username');
-    const fullName = button.getAttribute('data-full-name');
-    document.getElementById('deleteUserId').value = userId;
-    openModal('delete');
-}
-
-// Password visibility toggle for create modal
-function toggleCreatePassword() {
-    const passwordInput = document.getElementById('createPassword');
-    const eyeIcon = document.getElementById('createPasswordEye');
-    const eyeSlashIcon = document.getElementById('createPasswordEyeSlash');
-    
-    if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        eyeIcon.style.display = 'none';
-        eyeSlashIcon.style.display = 'inline';
-    } else {
-        passwordInput.type = 'password';
-        eyeIcon.style.display = 'inline';
-        eyeSlashIcon.style.display = 'none';
-    }
-}
-
-// Password visibility toggle for edit modal
-function toggleEditPassword() {
-    const passwordInput = document.getElementById('editPassword');
-    const eyeIcon = document.getElementById('editPasswordEye');
-    const eyeSlashIcon = document.getElementById('editPasswordEyeSlash');
-    
-    if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        eyeIcon.style.display = 'none';
-        eyeSlashIcon.style.display = 'inline';
-    } else {
-        passwordInput.type = 'password';
-        eyeIcon.style.display = 'inline';
-        eyeSlashIcon.style.display = 'none';
-    }
-}
-
-// Filter users by username
-function filterUsers() {
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
-    const userRows = document.querySelectorAll('.user-row');
-    
-    userRows.forEach(row => {
-        const username = row.getAttribute('data-username').toLowerCase();
-        if (username.includes(searchInput)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
-}
-
-// Close modals when clicking outside
-document.addEventListener('click', function(event) {
-    if (event.target.classList.contains('fixed')) {
-        event.target.classList.add('hidden');
-    }
-});
-</script>
+<script src="{% static 'src/js/users.js' %}"></script>
 {% endblock %}

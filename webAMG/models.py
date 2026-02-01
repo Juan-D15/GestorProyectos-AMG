@@ -226,7 +226,7 @@ class LoginLog(models.Model):
     """
     Registro de intentos de inicio de sesión.
     """
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='user_id')
     login_time = models.DateTimeField(auto_now_add=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True, null=True)
@@ -255,7 +255,7 @@ class UserSession(models.Model):
     """
     Sesiones activas de usuarios.
     """
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='user_id')
     session_token = models.CharField(max_length=255, unique=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True, null=True)
@@ -311,8 +311,8 @@ class Project(models.Model):
     )
     has_phases = models.BooleanField(default=False)
     progress_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_projects')
-    responsible_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='responsible_projects')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_projects', db_column='created_by')
+    responsible_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='responsible_projects', db_column='responsible_user')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -375,7 +375,7 @@ class Beneficiary(models.Model):
     profile_image_url = models.TextField(blank=True, null=True)
     observations = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -425,7 +425,7 @@ class ProjectPhase(models.Model):
         default=PhaseStatus.PENDIENTE
     )
     progress_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -461,7 +461,7 @@ class DailyActivity(models.Model):
     participants_count = models.IntegerField(blank=True, null=True)
     location = models.CharField(max_length=200, blank=True, null=True)
     observations = models.TextField(blank=True, null=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

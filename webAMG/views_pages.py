@@ -94,6 +94,12 @@ def projects_page(request):
 
 
 @login_required
+def project_create_page(request):
+    """Vista de la página de creación de proyectos."""
+    return render(request, "dashboard/project_create.html", {'user': request.user})
+
+
+@login_required
 def beneficiaries_page(request):
     """Vista de la sección Beneficiarios."""
     return render(request, "dashboard/beneficiaries.html", {'user': request.user})
@@ -158,7 +164,8 @@ def user_create(request):
         password = request.POST.get('password')
         phone = request.POST.get('phone', '')
         role = request.POST.get('role')
-        is_active = request.POST.get('is_active') == 'on'
+        # Los nuevos usuarios se crean activos por defecto
+        is_active = True
         
         # Validaciones
         if not all([username, email, full_name, password, role]):
@@ -192,7 +199,7 @@ def user_create(request):
                 password_hash='',  # Se establecerá después
                 phone=phone,
                 role=role,
-                is_active=is_active,
+                is_active=True,  # Siempre activo por defecto
             )
             user.set_password(password)
             user.save()
@@ -280,6 +287,7 @@ def user_delete(request):
     """
     Vista para eliminar un usuario.
     Solo accesible para usuarios con rol 'administrador'.
+    Revalida la contraseña del administrador antes de eliminar.
     """
     if request.user.role != 'administrador':
         messages.error(request, 'No tienes permisos para eliminar usuarios.')
@@ -287,9 +295,17 @@ def user_delete(request):
     
     if request.method == 'POST':
         user_id = request.POST.get('user_id')
+        admin_password = request.POST.get('admin_password')
+        
+        # Depuración
+        print(f"DEBUG: user_id={user_id}, admin_password={admin_password}")
         
         if not user_id:
             messages.error(request, 'ID de usuario no proporcionado.')
+            return redirect('dashboard_users')
+        
+        if not admin_password:
+            messages.error(request, 'Debes ingresar tu contraseña de administrador para eliminar un usuario.')
             return redirect('dashboard_users')
         
         User = request.user.__class__
@@ -301,6 +317,11 @@ def user_delete(request):
                 messages.error(request, 'No puedes eliminar tu propio usuario.')
                 return redirect('dashboard_users')
             
+            # Validar contraseña del administrador
+            if not request.user.check_password(admin_password):
+                messages.error(request, 'La contraseña del administrador es incorrecta. Por seguridad, intenta de nuevo en 3 segundos.')
+                return redirect('dashboard_users')
+            
             username = user.username
             user.delete()
             messages.success(request, f'Usuario {username} eliminado exitosamente.')
@@ -308,6 +329,7 @@ def user_delete(request):
             messages.error(request, 'Usuario no encontrado.')
         except Exception as e:
             messages.error(request, f'Error al eliminar usuario: {str(e)}')
+            print(f"DEBUG: Exception: {e}")
         
         return redirect('dashboard_users')
     
