@@ -3,6 +3,8 @@ URL configuration para el proyecto WebAMG.
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf.urls.static import static
+from django.conf import settings
 from webAMG import views_pages
 from webAMG import views as api_views
 
@@ -19,8 +21,12 @@ urlpatterns = [
     
     # Paginas del Dashboard (requieren autenticacion)
     path("dashboard/", views_pages.dashboard, name="dashboard"),
-    path("dashboard/proyectos/", views_pages.projects_page, name="dashboard_projects"),
+    path("dashboard/proyectos/", views_pages.project_list_page, name="dashboard_projects"),
+    path("dashboard/proyectos/lista/", views_pages.project_list_page, name="project_list"),
     path("dashboard/proyectos/crear/", views_pages.project_create_page, name="project_create"),
+    path("dashboard/proyectos/<int:project_id>/", views_pages.project_detail_page, name="project_detail"),
+    path("dashboard/proyectos/<int:project_id>/editar/", views_pages.project_edit_page, name="project_edit"),
+    path("dashboard/proyectos/<int:project_id>/eliminar/", views_pages.project_delete_page, name="project_delete"),
     path("dashboard/beneficiarios/", views_pages.beneficiaries_page, name="dashboard_beneficiaries"),
     path("dashboard/presupuesto/", views_pages.budget_page, name="dashboard_budget"),
     path("dashboard/reportes/", views_pages.reports_page, name="dashboard_reports"),
@@ -39,3 +45,7 @@ urlpatterns = [
     # ReactPy-Django WebSocket routes
     path("reactpy/", include("reactpy_django.http.urls")),
 ]
+
+# Media files (User uploaded files) - Solo en desarrollo
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

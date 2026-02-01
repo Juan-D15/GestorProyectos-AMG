@@ -6,55 +6,192 @@
 {% block page_subtitle %}Gestión de beneficiarios de proyectos{% endblock %}
 
 {% block dashboard_content %}
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-    <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center">
-        <i class="fas fa-users text-3xl text-white"></i>
+<div class="space-y-6">
+    <!-- Header con acciones -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">Lista de Beneficiarios</h2>
+            <p class="text-gray-500 mt-1">Total: {{ beneficiaries.count }} beneficiario(s)</p>
+        </div>
+        <button class="inline-flex items-center space-x-2 px-4 py-2 bg-[#8a4534] hover:bg-[#a05240] text-white font-medium rounded-lg transition-colors">
+            <i class="fas fa-plus"></i>
+            <span>Nuevo Beneficiario</span>
+        </button>
     </div>
-    <h3 class="text-xl font-semibold text-gray-900 mb-2">Gestión de Beneficiarios</h3>
-    <p class="text-gray-500 mb-6">Esta sección está en desarrollo</p>
-    <div class="mt-8 space-y-4">
-        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-            <div class="w-10 h-10 rounded-lg bg-[#8a4534]/10 flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-user-plus text-[#8a4534]"></i>
+
+    <!-- Barra de búsqueda -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div class="flex flex-col sm:flex-row gap-4">
+            <div class="flex-1">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" placeholder="Buscar por nombre, DPI o comunidad..." 
+                           class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#8a4534] focus:border-transparent">
+                </div>
             </div>
-            <div class="text-left">
-                <p class="text-sm font-medium text-gray-900">Registrar Beneficiario</p>
-                <p class="text-xs text-gray-500">Agregar nuevos beneficiarios al sistema</p>
-            </div>
-        </div>
-        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-            <div class="w-10 h-10 rounded-lg bg-[#334e76]/10 flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-search text-[#334e76]"></i>
-            </div>
-            <div class="text-left">
-                <p class="text-sm font-medium text-gray-900">Buscar Beneficiario</p>
-                <p class="text-xs text-gray-500">Consultar información de beneficiarios</p>
-            </div>
-        </div>
-        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-            <div class="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-chart-pie text-green-600"></i>
-            </div>
-            <div class="text-left">
-                <p class="text-sm font-medium text-gray-900">Estadísticas</p>
-                <p class="text-xs text-gray-500">Ver reportes y análisis de beneficiarios</p>
-            </div>
-        </div>
-        <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-            <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-file-export text-blue-600"></i>
-            </div>
-            <div class="text-left">
-                <p class="text-sm font-medium text-gray-900">Exportar Datos</p>
-                <p class="text-xs text-gray-500">Generar reportes en diferentes formatos</p>
+            <div class="flex gap-2">
+                <select class="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#8a4534] focus:border-transparent">
+                    <option value="">Todos los departamentos</option>
+                    <option value="Alta Verapaz">Alta Verapaz</option>
+                    <option value="Baja Verapaz">Baja Verapaz</option>
+                    <option value="Chimaltenango">Chimaltenango</option>
+                    <option value="Chiquimula">Chiquimula</option>
+                    <option value="Guatemala">Guatemala</option>
+                    <option value="El Progreso">El Progreso</option>
+                    <option value="Escuintla">Escuintla</option>
+                    <option value="Huehuetenango">Huehuetenango</option>
+                    <option value="Izabal">Izabal</option>
+                    <option value="Jalapa">Jalapa</option>
+                    <option value="Jutiapa">Jutiapa</option>
+                    <option value="Petén">Petén</option>
+                    <option value="Quetzaltenango">Quetzaltenango</option>
+                    <option value="Quiché">Quiché</option>
+                    <option value="Retalhuleu">Retalhuleu</option>
+                    <option value="Sacatepéquez">Sacatepéquez</option>
+                    <option value="San Marcos">San Marcos</option>
+                    <option value="Santa Rosa">Santa Rosa</option>
+                    <option value="Sololá">Sololá</option>
+                    <option value="Suchitepéquez">Suchitepéquez</option>
+                    <option value="Totonicapán">Totonicapán</option>
+                    <option value="Zacapa">Zacapa</option>
+                </select>
+                <button class="px-4 py-2 bg-[#334e76] hover:bg-[#445e86] text-white font-medium rounded-lg transition-colors">
+                    <i class="fas fa-filter"></i>
+                </button>
             </div>
         </div>
     </div>
-    <div class="mt-8">
-        <a href="{% url 'dashboard' %}" class="inline-flex items-center space-x-2 px-6 py-3 bg-[#8a4534] hover:bg-[#a05240] text-white font-medium rounded-lg transition-colors">
-            <i class="fas fa-arrow-left text-sm"></i>
-            <span>Volver al Dashboard</span>
-        </a>
+
+    <!-- Tabla de beneficiarios -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {% if beneficiaries %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Beneficiario</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">DPI/CUI</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ubicación</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Edad/Género</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado Civil</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Miembros Hogar</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for beneficiary in beneficiaries %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center flex-shrink-0">
+                                    <span class="text-white font-semibold text-sm">{{ beneficiary.first_name|slice:":1" }}{{ beneficiary.last_name|slice:":1" }}</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">{{ beneficiary.first_name }} {{ beneficiary.last_name }}</p>
+                                    {% if beneficiary.community %}
+                                    <p class="text-sm text-gray-500">{{ beneficiary.community }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-gray-700 font-mono">{{ beneficiary.cui_dpi|default:"--" }}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <p class="text-gray-700">{{ beneficiary.department }}</p>
+                            <p class="text-sm text-gray-500">{{ beneficiary.municipality }}</p>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center space-x-2">
+                                {% if beneficiary.age %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {{ beneficiary.age }} años
+                                </span>
+                                {% endif %}
+                                {% if beneficiary.gender %}
+                                <span class="text-gray-600 text-sm">
+                                    {% if beneficiary.gender == 'F' %}<i class="fas fa-female text-pink-500"></i>{% else %}<i class="fas fa-male text-blue-500"></i>{% endif %}
+                                    {{ beneficiary.gender }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                {% if beneficiary.civil_status == 'soltero' %}bg-gray-100 text-gray-800
+                                {% elif beneficiary.civil_status == 'casado' %}bg-green-100 text-green-800
+                                {% elif beneficiary.civil_status == 'unido' %}bg-blue-100 text-blue-800
+                                {% elif beneficiary.civil_status == 'divorciado' %}bg-orange-100 text-orange-800
+                                {% elif beneficiary.civil_status == 'viudo' %}bg-purple-100 text-purple-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ beneficiary.get_civil_status_display|default:"--" }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center space-x-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#8a4534]/10 text-[#8a4534]">
+                                    <i class="fas fa-users mr-1"></i> {{ beneficiary.total_household_members }}
+                                </span>
+                                {% if beneficiary.male_members > 0 %}
+                                <span class="text-xs text-blue-600"><i class="fas fa-male"></i> {{ beneficiary.male_members }}</span>
+                                {% endif %}
+                                {% if beneficiary.female_members > 0 %}
+                                <span class="text-xs text-pink-600"><i class="fas fa-female"></i> {{ beneficiary.female_members }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-center space-x-2">
+                                <button class="p-2 text-gray-400 hover:text-[#8a4534] hover:bg-[#8a4534]/10 rounded-lg transition-colors" title="Ver detalles">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Asignar a proyecto">
+                                    <i class="fas fa-project-diagram"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- Estado vacío -->
+        <div class="p-12 text-center">
+            <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center">
+                <i class="fas fa-users text-3xl text-white"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">No hay beneficiarios registrados</h3>
+            <p class="text-gray-500 mb-6">Comienza agregando el primer beneficiario al sistema</p>
+            <button class="inline-flex items-center space-x-2 px-6 py-3 bg-[#8a4534] hover:bg-[#a05240] text-white font-medium rounded-lg transition-colors">
+                <i class="fas fa-plus"></i>
+                <span>Agregar Beneficiario</span>
+            </button>
+        </div>
+        {% endif %}
     </div>
+
+    <!-- Paginación -->
+    {% if beneficiaries.count > 10 %}
+    <div class="flex items-center justify-between">
+        <p class="text-sm text-gray-500">Mostrando 1-10 de {{ beneficiaries.count }} resultados</p>
+        <div class="flex items-center space-x-2">
+            <button class="px-3 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50" disabled>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="px-3 py-2 bg-[#8a4534] text-white rounded-lg">1</button>
+            <button class="px-3 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">2</button>
+            <button class="px-3 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">3</button>
+            <span class="px-2 text-gray-400">...</span>
+            <button class="px-3 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">10</button>
+            <button class="px-3 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

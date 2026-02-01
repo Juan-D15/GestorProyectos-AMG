@@ -311,6 +311,13 @@ class Project(models.Model):
     )
     has_phases = models.BooleanField(default=False)
     progress_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    beneficiaries = models.ManyToManyField(
+        'Beneficiary',
+        blank=True,
+        related_name='projects',
+        through='ProjectBeneficiary',
+        through_fields=('project', 'beneficiary')
+    )
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_projects', db_column='created_by')
     responsible_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='responsible_projects', db_column='responsible_user')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -337,6 +344,37 @@ class Project(models.Model):
         from django.core.exceptions import ValidationError
         if self.end_date and self.end_date < self.start_date:
             raise ValidationError({'end_date': 'La fecha de fin debe ser posterior a la fecha de inicio.'})
+
+
+# =====================================================
+# TABLA INTERMEDIA: PROYECTO-BENEFICIARIOS
+# =====================================================
+
+class ProjectBeneficiary(models.Model):
+    """
+    Relación entre proyectos y beneficiarios.
+    Tabla intermedia para la relación ManyToMany.
+    """
+    id = models.AutoField(primary_key=True)
+    project = models.ForeignKey('Project', on_delete=models.CASCADE, db_column='project_id')
+    beneficiary = models.ForeignKey('Beneficiary', on_delete=models.CASCADE, db_column='beneficiary_id')
+    assigned_date = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
+
+    class Meta:
+        db_table = 'project_beneficiaries'
+        unique_together = ('project', 'beneficiary')
+        verbose_name = 'Proyecto-Beneficiario'
+        verbose_name_plural = 'Proyectos-Beneficiarios'
+        indexes = [
+            models.Index(fields=['project']),
+            models.Index(fields=['beneficiary']),
+            models.Index(fields=['assigned_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.project.project_name} - {self.beneficiary.first_name} {self.beneficiary.last_name}"
 
 
 # =====================================================

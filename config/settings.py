@@ -125,6 +125,12 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'webAMG' / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Media files (User uploaded files)
+# https://docs.djangoproject.com/en/6.0/howto/static-files/
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # ReactPy-Django Configuration
 REACTPY_DATABASE = {
     'BACKEND': 'reactpy_django.database.backends.default',

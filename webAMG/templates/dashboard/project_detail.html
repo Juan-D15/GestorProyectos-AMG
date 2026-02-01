@@ -1,0 +1,220 @@
+{% extends "base_dashboard.html" %}
+{% load static %}
+
+{% block active_projects_class %}bg-[#8a4534]/10 text-[#8a4534]{% endblock %}
+{% block page_title %}{{ project.project_name }}{% endblock %}
+{% block page_subtitle %}Detalles del proyecto{% endblock %}
+
+{% block dashboard_content %}
+<!-- Botón de regreso -->
+<div class="mb-6">
+    <a href="{% url 'project_list' %}" class="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors">
+        <i class="fas fa-arrow-left"></i>
+        <span>Volver a Proyectos</span>
+    </a>
+</div>
+
+<!-- Información Principal -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
+    <div class="p-6">
+        <div class="flex items-start space-x-6">
+            <!-- Imagen de Portada -->
+            <div class="flex-shrink-0 w-1/2">
+                {% if project.cover_image_url %}
+                    <img src="/media/{{ project.cover_image_url }}" alt="{{ project.project_name }}" class="w-full h-64 object-cover rounded-xl border border-gray-200">
+                {% else %}
+                    <div class="w-full h-64 rounded-xl bg-[#8a4534]/10 flex items-center justify-center border border-gray-200">
+                        <i class="fas fa-project-diagram text-6xl text-[#8a4534]"></i>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Información -->
+            <div class="flex-1">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ project.project_name }}</h1>
+                    {% if project.project_code %}
+                        <p class="text-sm text-gray-500 mb-4">Código: {{ project.project_code }}</p>
+                    {% endif %}
+                    {% if project.status == 'planificado' %}
+                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Planificado</span>
+                    {% elif project.status == 'en_progreso' %}
+                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">En Progreso</span>
+                    {% elif project.status == 'pausado' %}
+                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">Pausado</span>
+                    {% elif project.status == 'completado' %}
+                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Completado</span>
+                    {% elif project.status == 'cancelado' %}
+                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Cancelado</span>
+                    {% endif %}
+                </div>
+                
+                <!-- Descripción -->
+                {% if project.description %}
+                    <div class="mt-6">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Descripción</h3>
+                        <p class="text-gray-600">{{ project.description }}</p>
+                    </div>
+                {% endif %}
+                
+                <!-- Objetivos -->
+                {% if project.objectives %}
+                    <div class="mt-4">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Objetivos</h3>
+                        <p class="text-gray-600">{{ project.objectives }}</p>
+                    </div>
+                {% endif %}
+                
+                <!-- Qué se hace -->
+                {% if project.what_is_done %}
+                    <div class="mt-4">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Qué se hace</h3>
+                        <p class="text-gray-600">{{ project.what_is_done }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detalles del Proyecto -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <!-- Fechas -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            <i class="fas fa-calendar-alt text-[#8a4534] mr-2"></i>Fechas
+        </h3>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-500">Fecha de Inicio</span>
+                <span class="text-sm font-medium text-gray-900">{{ project.start_date|date:"d/m/Y" }}</span>
+            </div>
+            {% if project.end_date %}
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500">Fecha de Fin</span>
+                    <span class="text-sm font-medium text-gray-900">{{ project.end_date|date:"d/m/Y" }}</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Ubicación -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            <i class="fas fa-map-marker-alt text-[#8a4534] mr-2"></i>Ubicación
+        </h3>
+        <div class="space-y-3">
+            {% if project.location %}
+                <div>
+                    <span class="text-sm text-gray-500">Dirección</span>
+                    <p class="text-sm font-medium text-gray-900">{{ project.location }}</p>
+                </div>
+            {% endif %}
+            {% if project.municipality %}
+                <div>
+                    <span class="text-sm text-gray-500">Municipio</span>
+                    <p class="text-sm font-medium text-gray-900">{{ project.municipality }}</p>
+                </div>
+            {% endif %}
+            {% if project.department %}
+                <div>
+                    <span class="text-sm text-gray-500">Departamento</span>
+                    <p class="text-sm font-medium text-gray-900">{{ project.department }}</p>
+                </div>
+            {% endif %}
+            {% if not project.location and not project.municipality and not project.department %}
+                <p class="text-sm text-gray-400">No se ha especificado ubicación</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Presupuesto -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            <i class="fas fa-dollar-sign text-[#8a4534] mr-2"></i>Presupuesto
+        </h3>
+        <div class="space-y-3">
+            {% if project.estimated_budget %}
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500">Presupuesto Estimado</span>
+                    <span class="text-sm font-medium text-gray-900">Q {{ project.estimated_budget }}</span>
+                </div>
+            {% endif %}
+            {% if project.actual_budget %}
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500">Presupuesto Actual</span>
+                    <span class="text-sm font-medium text-gray-900">Q {{ project.actual_budget }}</span>
+                </div>
+            {% endif %}
+            {% if not project.estimated_budget and not project.actual_budget %}
+                <p class="text-sm text-gray-400">No se ha especificado presupuesto</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Beneficiarios del Proyecto -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+        <i class="fas fa-users text-[#8a4534] mr-2"></i>Beneficiarios del Proyecto
+    </h3>
+    {% if project_beneficiaries %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for beneficiary in project_beneficiaries %}
+                <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                        <span>{{ beneficiary.first_name|slice:":1" }}{{ beneficiary.last_name|slice:":1" }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-gray-900 truncate">{{ beneficiary.first_name }} {{ beneficiary.last_name }}</p>
+                        <p class="text-sm text-gray-500 truncate">
+                            {% if beneficiary.cui_dpi %}DPI: {{ beneficiary.cui_dpi }}{% else %}Sin DPI{% endif %}
+                            {% if beneficiary.community %} • {{ beneficiary.community }}{% endif %}
+                        </p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-8">
+            <i class="fas fa-users text-4xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">Este proyecto no tiene beneficiarios asignados</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Secciones de Fases y Evidencias -->
+{% if project.has_phases %}
+    <!-- Fases del Proyecto -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            <i class="fas fa-tasks text-[#8a4534] mr-2"></i>Fases del Proyecto
+        </h3>
+        <div class="text-center py-8">
+            <i class="fas fa-cogs text-4xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">Las fases se gestionarán en una sección dedicada.</p>
+            <p class="text-sm text-gray-400">Esta funcionalidad estará disponible próximamente.</p>
+        </div>
+    </div>
+{% else %}
+    <!-- Evidencias (para proyectos sin fases) -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            <i class="fas fa-images text-[#8a4534] mr-2"></i>Evidencias
+        </h3>
+        <div class="text-center py-8">
+            <i class="fas fa-file-image text-4xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">Las evidencias se gestionarán en una sección dedicada.</p>
+            <p class="text-sm text-gray-400">Esta funcionalidad estará disponible próximamente.</p>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Información de Auditoría -->
+<div class="bg-gray-50 rounded-xl border border-gray-200 p-4">
+    <div class="flex items-center justify-between text-sm text-gray-500">
+        <span>Creado: {{ project.created_at|date:"d/m/Y H:i" }}</span>
+        <span>Última actualización: {{ project.updated_at|date:"d/m/Y H:i" }}</span>
+    </div>
+</div>
+{% endblock %}

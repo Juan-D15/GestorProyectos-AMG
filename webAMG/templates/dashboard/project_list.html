@@ -1,0 +1,190 @@
+{% extends "base_dashboard.html" %}
+{% load static %}
+
+{% block active_projects_class %}bg-[#8a4534]/10 text-[#8a4534]{% endblock %}
+{% block page_title %}Proyectos{% endblock %}
+{% block page_subtitle %}Gestión de proyectos de la organización{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'src/js/projects.js' %}"></script>
+<script>
+// Manejar clic en fila de proyecto para ir al detalle
+document.addEventListener('DOMContentLoaded', function() {
+    const projectRows = document.querySelectorAll('[data-project-id]');
+    projectRows.forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            // Si el clic es en un botón de acción, no navegar al detalle
+            if (e.target.closest('button')) {
+                e.stopPropagation();
+                return;
+            }
+            const projectId = this.getAttribute('data-project-id');
+            window.location.href = `/dashboard/proyectos/${projectId}/`;
+        });
+    });
+});
+</script>
+{% endblock %}
+
+{% block dashboard_content %}
+<!-- Acciones -->
+<div class="mb-8">
+    <a href="{% url 'project_create' %}" class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 card-hover cursor-pointer inline-flex items-center space-x-4">
+        <div class="w-12 h-12 rounded-lg bg-[#8a4534]/10 flex items-center justify-center">
+            <i class="fas fa-plus text-xl text-[#8a4534]"></i>
+        </div>
+        <div>
+            <h3 class="text-lg font-semibold text-gray-900">Crear Proyecto</h3>
+            <p class="text-sm text-gray-500">Agregar un nuevo proyecto al sistema</p>
+        </div>
+    </a>
+</div>
+
+<!-- Filtros y Búsqueda -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+    <form method="get" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <!-- Búsqueda -->
+            <div class="md:col-span-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
+                <div class="relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input 
+                        type="text" 
+                        name="search" 
+                        value="{{ search_query }}"
+                        placeholder="Nombre, código o ubicación..." 
+                        class="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]"
+                    >
+                </div>
+            </div>
+            
+            <!-- Estado -->
+            <div class="md:col-span-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select 
+                    name="status" 
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]"
+                >
+                    <option value="">Todos</option>
+                    <option value="planificado" {% if status_filter == 'planificado' %}selected{% endif %}>Planificado</option>
+                    <option value="en_progreso" {% if status_filter == 'en_progreso' %}selected{% endif %}>En Progreso</option>
+                    <option value="pausado" {% if status_filter == 'pausado' %}selected{% endif %}>Pausado</option>
+                    <option value="completado" {% if status_filter == 'completado' %}selected{% endif %}>Completado</option>
+                    <option value="cancelado" {% if status_filter == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                </select>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="md:col-span-4 flex items-end space-x-2">
+                <button type="submit" class="flex-1 px-6 py-2.5 text-sm font-medium text-white bg-[#8a4534] hover:bg-[#a05240] rounded-lg transition-colors">
+                    <i class="fas fa-filter mr-2"></i>Filtrar
+                </button>
+                <a href="{% url 'project_list' %}" class="flex-1 px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-center">
+                    <i class="fas fa-times mr-2"></i>Limpiar
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Lista de Proyectos -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100">
+    {% if projects %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-gray-100">
+                        <th class="text-left py-4 px-6 text-sm font-semibold text-gray-700">Proyecto</th>
+                        <th class="text-left py-4 px-6 text-sm font-semibold text-gray-700">Ubicación</th>
+                        <th class="text-left py-4 px-6 text-sm font-semibold text-gray-700">Estado</th>
+                        <th class="text-left py-4 px-6 text-sm font-semibold text-gray-700">Fecha Inicio</th>
+                        <th class="text-right py-4 px-6 text-sm font-semibold text-gray-700">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                        <tr class="border-b border-gray-50 hover:bg-gray-50" data-project-id="{{ project.id }}">
+                            <td class="py-4 px-6">
+                                <div class="flex items-center space-x-3">
+                                    {% if project.cover_image_url %}
+                                        <img src="/media/{{ project.cover_image_url }}" alt="{{ project.project_name }}" class="w-12 h-12 rounded-lg object-cover">
+                                    {% else %}
+                                        <div class="w-12 h-12 rounded-lg bg-[#8a4534]/10 flex items-center justify-center">
+                                            <i class="fas fa-project-diagram text-[#8a4534]"></i>
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <p class="font-medium text-gray-900">{{ project.project_name }}</p>
+                                        {% if project.project_code %}
+                                            <p class="text-sm text-gray-500">{{ project.project_code }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <div class="text-sm text-gray-700">
+                                    <p>
+                                        {% if project.municipality %}
+                                            {{ project.municipality }}
+                                        {% else %}
+                                            <span class="text-gray-400">No especificado</span>
+                                        {% endif %}
+                                    </p>
+                                    <p class="text-xs text-gray-500">
+                                        {% if project.department %}
+                                            {{ project.department }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6">
+                                {% if project.status == 'planificado' %}
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Planificado</span>
+                                {% elif project.status == 'en_progreso' %}
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">En Progreso</span>
+                                {% elif project.status == 'pausado' %}
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">Pausado</span>
+                                {% elif project.status == 'completado' %}
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Completado</span>
+                                {% elif project.status == 'cancelado' %}
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Cancelado</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-4 px-6">
+                                <p class="text-sm text-gray-700">{{ project.start_date|date:"d/m/Y" }}</p>
+                            </td>
+                            <td class="py-4 px-6">
+                                <div class="flex items-center justify-end space-x-2">
+                                    <button type="button" class="p-2 text-gray-400 hover:text-[#8a4534] hover:bg-[#8a4534]/10 rounded-lg transition-colors" onclick="editProject({{ project.id }})" data-edit-id="{{ project.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" onclick="deleteProject({{ project.id }})" data-delete-id="{{ project.id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="py-12 text-center">
+            <i class="fas fa-folder-open text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">No hay proyectos</h3>
+            <p class="text-gray-500 mb-6">
+                {% if search_query or status_filter %}
+                    No se encontraron proyectos con los filtros actuales.
+                {% else %}
+                    No hay proyectos registrados en el sistema.
+                {% endif %}
+            </p>
+            <a href="{% url 'project_create' %}" class="inline-flex items-center space-x-2 px-6 py-3 bg-[#8a4534] hover:bg-[#a05240] text-white font-medium rounded-lg transition-colors">
+                <i class="fas fa-plus"></i>
+                <span>Crear Primer Proyecto</span>
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

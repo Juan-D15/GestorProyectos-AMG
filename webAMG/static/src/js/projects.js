@@ -1,40 +1,40 @@
-// Modal functions
-function openModal(type) {
-    document.getElementById(type + 'Modal').classList.remove('hidden');
+// Funciones para la lista de proyectos
+
+// Editar proyecto
+function editProject(projectId) {
+    window.location.href = `/dashboard/proyectos/${projectId}/editar/`;
 }
 
-function closeModal(type) {
-    document.getElementById(type + 'Modal').classList.add('hidden');
+// Eliminar proyecto
+function deleteProject(projectId) {
+    window.location.href = `/dashboard/proyectos/${projectId}/eliminar/`;
 }
 
-// Image preview function
+// Funciones para manejo de imagen de portada
 function previewImage(input) {
-    const previewContainer = document.getElementById('imagePreviewContainer');
-    const preview = document.getElementById('imagePreview');
-    const removeBtn = document.getElementById('removeImageBtn');
-    
     if (input.files && input.files[0]) {
         const reader = new FileReader();
-        
         reader.onload = function(e) {
+            const preview = document.getElementById('imagePreview');
+            const container = document.getElementById('imagePreviewContainer');
+            const inputContainer = input.closest('.flex-1');
+            
             preview.src = e.target.result;
-            previewContainer.classList.remove('hidden');
-            removeBtn.classList.remove('hidden');
-        }
-        
+            container.classList.remove('hidden');
+            inputContainer.classList.add('hidden');
+        };
         reader.readAsDataURL(input.files[0]);
     }
 }
 
-// Remove cover image function
 function removeCoverImage() {
     const input = document.getElementById('coverImageInput');
-    const previewContainer = document.getElementById('imagePreviewContainer');
     const preview = document.getElementById('imagePreview');
-    const removeBtn = document.getElementById('removeImageBtn');
+    const container = document.getElementById('imagePreviewContainer');
+    const inputContainer = input.closest('.flex-1');
     
     input.value = '';
     preview.src = '';
-    previewContainer.classList.add('hidden');
-    removeBtn.classList.add('hidden');
+    container.classList.add('hidden');
+    inputContainer.classList.remove('hidden');
 }
