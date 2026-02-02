@@ -18,6 +18,7 @@ urlpatterns = [
     path("about/", views_pages.about, name="about"),
     path("contact/", views_pages.contact, name="contact"),
     path("logout/", views_pages.logout_page, name="logout"),
+    path("test-timezone/", views_pages.test_timezone_view, name="test_timezone"),
     
     # Paginas del Dashboard (requieren autenticacion)
     path("dashboard/", views_pages.dashboard, name="dashboard"),
@@ -27,6 +28,10 @@ urlpatterns = [
     path("dashboard/proyectos/<int:project_id>/", views_pages.project_detail_page, name="project_detail"),
     path("dashboard/proyectos/<int:project_id>/editar/", views_pages.project_edit_page, name="project_edit"),
     path("dashboard/proyectos/<int:project_id>/eliminar/", views_pages.project_delete_page, name="project_delete"),
+    path("dashboard/proyectos/<int:project_id>/evidencias/agregar/", views_pages.project_evidence_add, name="project_evidence_add"),
+    path("dashboard/proyectos/<int:project_id>/evidencias/<int:evidence_id>/editar/", views_pages.project_evidence_edit, name="project_evidence_edit"),
+    path("dashboard/proyectos/<int:project_id>/evidencias/<int:evidence_id>/eliminar/", views_pages.project_evidence_delete, name="project_evidence_delete"),
+    path("dashboard/proyectos/<int:project_id>/evidencias/<int:evidence_id>/fotos/", views_pages.project_evidence_photos, name="project_evidence_photos"),
     path("dashboard/beneficiarios/", views_pages.beneficiaries_page, name="dashboard_beneficiaries"),
     path("dashboard/presupuesto/", views_pages.budget_page, name="dashboard_budget"),
     path("dashboard/reportes/", views_pages.reports_page, name="dashboard_reports"),

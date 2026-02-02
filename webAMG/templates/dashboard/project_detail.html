@@ -5,6 +5,11 @@
 {% block page_title %}{{ project.project_name }}{% endblock %}
 {% block page_subtitle %}Detalles del proyecto{% endblock %}
 
+{% block extra_js %}
+<script src="{% static 'src/js/projects.js' %}"></script>
+<script src="{% static 'src/js/evidences.js' %}"></script>
+{% endblock %}
+
 {% block dashboard_content %}
 <!-- Botón de regreso -->
 <div class="mb-6">
@@ -199,14 +204,82 @@
 {% else %}
     <!-- Evidencias (para proyectos sin fases) -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">
-            <i class="fas fa-images text-[#8a4534] mr-2"></i>Evidencias
-        </h3>
-        <div class="text-center py-8">
-            <i class="fas fa-file-image text-4xl text-gray-300 mb-4"></i>
-            <p class="text-gray-500">Las evidencias se gestionarán en una sección dedicada.</p>
-            <p class="text-sm text-gray-400">Esta funcionalidad estará disponible próximamente.</p>
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">
+                <i class="fas fa-images text-[#8a4534] mr-2"></i>Evidencias
+            </h3>
+            <button type="button" onclick="openEvidenceModal()" class="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-[#8a4534] hover:bg-[#a05240] rounded-lg transition-colors">
+                <i class="fas fa-plus"></i>
+                <span>Agregar Evidencia</span>
+            </button>
         </div>
+        {% if project.evidences.all %}
+            <div class="space-y-4">
+                {% for evidence in project.evidences.all %}
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <h4 class="font-medium text-gray-900">
+                                    <i class="fas fa-calendar-alt text-[#8a4534] mr-2"></i>
+                                    {{ evidence.start_date|date:"d/m/Y" }} {% if evidence.end_date != evidence.start_date %} - {{ evidence.end_date|date:"d/m/Y" }}{% endif %}
+                                </h4>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button type="button"
+                                        data-evidence-id="{{ evidence.id }}"
+                                        data-start-date="{{ evidence.start_date|date:'Y-m-d' }}"
+                                        data-end-date="{{ evidence.end_date|date:'Y-m-d' }}"
+                                        data-description="{{ evidence.description|escapejs }}"
+                                        onclick="openEditEvidenceModal(this)"
+                                        class="text-[#8a4534] hover:text-[#a05240] transition-colors">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button"
+                                        data-evidence-id="{{ evidence.id }}"
+                                        onclick="confirmDeleteEvidence(this)"
+                                        class="text-red-500 hover:text-red-700 transition-colors">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 mb-3">{{ evidence.description }}</p>
+                        {% if evidence.photos.all %}
+                            <div class="relative">
+                                {% if evidence.photos.all|length > 6 %}
+                                    <button type="button" onclick="navigateEvidencePhotos('{{ evidence.id }}', -1)" class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-8 h-8 bg-white hover:bg-gray-100 rounded-full shadow-lg border border-gray-200 flex items-center justify-center transition-colors">
+                                        <i class="fas fa-chevron-left text-gray-600"></i>
+                                    </button>
+                                    <button type="button" onclick="navigateEvidencePhotos('{{ evidence.id }}', 1)" class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-8 h-8 bg-white hover:bg-gray-100 rounded-full shadow-lg border border-gray-200 flex items-center justify-center transition-colors">
+                                        <i class="fas fa-chevron-right text-gray-600"></i>
+                                    </button>
+                                {% endif %}
+                                <div id="evidence-photos-{{ evidence.id }}" class="grid gap-2">
+                                    {% for photo in evidence.photos.all %}
+                                        <div class="relative group evidence-photo rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow" data-index="{{ forloop.counter0 }}">
+                                            <img src="/media/{{ photo.photo_url }}" alt="{{ photo.caption|default:'Foto de evidencia' }}" class="w-full h-32 md:h-36 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                                 data-photo-url="{{ photo.photo_url }}"
+                                                 data-photo-caption="{{ photo.caption|default:''|escapejs }}"
+                                                 onclick="openPhotoModal(this)">
+                                            {% if photo.caption %}
+                                                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-xs p-2">
+                                                    {{ photo.caption }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-8">
+                <i class="fas fa-file-image text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">No hay evidencias registradas</p>
+                <p class="text-sm text-gray-400">Haga clic en "Agregar Evidencia" para registrar una nueva evidencia</p>
+            </div>
+        {% endif %}
     </div>
 {% endif %}
 
@@ -217,4 +290,128 @@
         <span>Última actualización: {{ project.updated_at|date:"d/m/Y H:i" }}</span>
     </div>
 </div>
+
+<!-- Modal para Agregar/Editar Evidencia -->
+<div id="evidenceModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
+            <div class="flex items-center justify-between">
+                <h3 id="evidenceModalTitle" class="text-lg font-semibold text-gray-900">Agregar Evidencia</h3>
+                <button onclick="closeEvidenceModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+        </div>
+        <form id="evidenceForm" method="post" action="{% url 'project_evidence_add' project.id %}" class="p-6 space-y-6" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="evidence_id" id="evidenceIdInput" value="">
+            
+            <!-- Fechas -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio *</label>
+                    <input type="date" name="start_date" required class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Fin</label>
+                    <input type="date" name="end_date" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
+                </div>
+            </div>
+            
+            <!-- Fotos existentes -->
+            {% if evidence_photos %}
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-medium text-gray-700">Fotos existentes</h4>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {% for photo in evidence_photos %}
+                            <div class="relative group">
+                                <img src="/media/{{ photo.photo_url }}" alt="{{ photo.caption|default:'Foto de evidencia' }}" class="w-full h-32 object-cover rounded-lg border border-gray-200">
+                                <button type="button"
+                                        data-photo-id="{{ photo.id }}"
+                                        onclick="deleteEvidencePhoto(this)"
+                                        class="absolute -top-2 -right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors flex items-center justify-center">
+                                    <i class="fas fa-times text-sm"></i>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Descripción -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Descripción de lo que se hizo *</label>
+                <textarea name="description" rows="4" required class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]" placeholder="Describa las actividades realizadas en este periodo..."></textarea>
+            </div>
+            
+            <!-- Fotos -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fotos de la Evidencia</label>
+                <div class="relative">
+                    <input type="file" name="photos" id="evidencePhotosInput" accept="image/*" multiple class="hidden" onchange="previewEvidencePhotos(this)">
+                    <label for="evidencePhotosInput" class="flex items-center justify-center w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#8a4534] hover:bg-[#8a4534]/5 transition-all">
+                        <div class="flex flex-col items-center space-y-2">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400"></i>
+                            <div class="text-center">
+                                <p class="text-sm font-medium text-gray-700">Subir fotos</p>
+                                <p class="text-xs text-gray-500">o arrastra y suelta aquí (múltiples)</p>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                <div id="evidencePhotosPreview" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 hidden">
+                    <!-- Las previsualizaciones se agregarán aquí -->
+                </div>
+            </div>
+            
+            <!-- Botones -->
+            <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-100">
+                <button type="button" onclick="closeEvidenceModal()" class="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit" class="px-6 py-2.5 text-sm font-medium text-white bg-[#8a4534] hover:bg-[#a05240] rounded-lg transition-colors">
+                    <i class="fas fa-save mr-2"></i>Guardar Evidencia
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+</div>
+
+<!-- Modal de confirmación para eliminar evidencia -->
+<div id="deleteEvidenceModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-trash-alt text-red-500 text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">¿Eliminar Evidencia?</h3>
+            <p class="text-gray-600 mb-6">Esta acción eliminará la evidencia y todas sus fotos. ¿Está seguro de que desea continuar?</p>
+            <form id="deleteEvidenceForm" method="post" action="">
+                {% csrf_token %}
+                <div class="flex items-center justify-center space-x-3">
+                    <button type="button" onclick="closeDeleteEvidenceModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors">
+                        Eliminar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver foto en tamaño completo -->
+<div id="photoModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+<div class="relative max-w-3xl max-h-[85vh]">
+    <button onclick="closePhotoModal()" class="absolute -top-4 -right-4 text-white hover:text-gray-300 text-2xl z-10">
+        <i class="fas fa-times"></i>
+    </button>
+    <img id="photoModalImage" src="" alt="Foto de evidencia" class="max-w-full max-h-[80vh] object-contain rounded-lg">
+</div>
+</div>
+
 {% endblock %}

@@ -10,6 +10,8 @@ from django.contrib import messages
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.db import models
+from django.utils import timezone
+from datetime import datetime
 from .forms import LoginForm
 
 
@@ -381,6 +383,41 @@ def project_create_page(request):
             has_phases = request.POST.get('has_phases') == 'on'
             progress_percentage = request.POST.get('progress_percentage', 0)
             
+            # Validar código de proyecto si se proporciona
+            if project_code:
+                existing_project = Project.objects.filter(project_code=project_code).first()
+                if existing_project:
+                    messages.error(request, f'El código de proyecto "{project_code}" ya está en uso. Por favor, use otro código.')
+                    return render(request, "dashboard/project_create.html", {
+                        'user': request.user,
+                        'beneficiaries': beneficiaries,
+                        'error_project_code': project_code,
+                        'error_municipality': municipality,
+                        'error_department': department,
+                    })
+            
+            # Validar municipio (solo letras y espacios, no números ni caracteres especiales)
+            if municipality and not municipality.replace(' ', '').isalpha():
+                messages.error(request, 'El municipio solo puede contener letras y espacios. No se permiten números ni caracteres especiales.')
+                return render(request, "dashboard/project_create.html", {
+                    'user': request.user,
+                    'beneficiaries': beneficiaries,
+                    'error_project_code': project_code,
+                    'error_municipality': municipality,
+                    'error_department': department,
+                })
+            
+            # Validar departamento (solo letras y espacios, no números ni caracteres especiales)
+            if department and not department.replace(' ', '').isalpha():
+                messages.error(request, 'El departamento solo puede contener letras y espacios. No se permiten números ni caracteres especiales.')
+                return render(request, "dashboard/project_create.html", {
+                    'user': request.user,
+                    'beneficiaries': beneficiaries,
+                    'error_project_code': project_code,
+                    'error_municipality': municipality,
+                    'error_department': department,
+                })
+            
             # Manejar imagen de portada
             cover_image_url = None
             if 'cover_image' in request.FILES:
@@ -485,7 +522,7 @@ def project_detail_page(request, project_id):
     """
     Vista para ver detalles de un proyecto específico.
     """
-    from webAMG.models import Project, ProjectBeneficiary, Beneficiary
+    from webAMG.models import Project, ProjectBeneficiary, Beneficiary, ProjectEvidence
     
     project = get_object_or_404(Project, id=project_id)
     
@@ -507,6 +544,10 @@ def project_detail_page(request, project_id):
     print(f'Beneficiarios encontrados: {beneficiaries.count()}')
     for b in beneficiaries:
         print(f'  - {b.id}: {b.first_name} {b.last_name}')
+    
+    # Obtener las evidencias del proyecto
+    evidences = ProjectEvidence.objects.filter(project=project).order_by('-start_date', '-created_at')
+    print(f'Evidencias encontradas: {evidences.count()}')
     
     context = {
         'user': request.user,
@@ -564,8 +605,37 @@ def project_edit_page(request, project_id):
             project.estimated_budget = request.POST.get('estimated_budget') or project.estimated_budget
             project.actual_budget = request.POST.get('actual_budget') or project.actual_budget
             project.location = request.POST.get('location') or project.location
-            project.municipality = request.POST.get('municipality') or project.municipality
-            project.department = request.POST.get('department') or project.department
+            
+            # Validar municipio y departamento (solo letras, espacios y caracteres válidos)
+            municipality = request.POST.get('municipality')
+            department = request.POST.get('department')
+            
+            if municipality and not municipality.replace(' ', '').isalpha():
+                messages.error(request, 'El municipio solo puede contener letras y espacios. No se permiten números ni caracteres especiales.')
+                return render(request, "dashboard/project_edit.html", {
+                    'user': request.user,
+                    'project': project,
+                    'beneficiaries': beneficiaries,
+                    'selected_beneficiary_ids': selected_beneficiary_ids,
+                    'project_bbeneficiaries': project_bbeneficiaries,
+                    'error_municipality': municipality,
+                    'error_department': department,
+                })
+            
+            if department and not department.replace(' ', '').isalpha():
+                messages.error(request, 'El departamento solo puede contener letras y espacios. No se permiten números ni caracteres especiales.')
+                return render(request, "dashboard/project_edit.html", {
+                    'user': request.user,
+                    'project': project,
+                    'beneficiaries': beneficiaries,
+                    'selected_beneficiary_ids': selected_beneficiary_ids,
+                    'project_bbeneficiaries': project_bbeneficiaries,
+                    'error_municipality': municipality,
+                    'error_department': department,
+                })
+            
+            project.municipality = municipality or project.municipality
+            project.department = department or project.department
             project.status = request.POST.get('status', project.status)
             project.has_phases = request.POST.get('has_phases') == 'on'
             project.progress_percentage = request.POST.get('progress_percentage', 0) or project.progress_percentage
@@ -627,6 +697,8 @@ def project_delete_page(request, project_id):
     """
     Vista para eliminar un proyecto.
     """
+    import os
+    from django.conf import settings
     from webAMG.models import Project
     
     project = get_object_or_404(Project, id=project_id)
@@ -634,6 +706,15 @@ def project_delete_page(request, project_id):
     if request.method == 'POST':
         try:
             project_name = project.project_name
+            
+            # Eliminar la imagen de portada si existe
+            if project.cover_image_url:
+                image_path = os.path.join(settings.MEDIA_ROOT, project.cover_image_url)
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+                    print(f'Imagen eliminada: {image_path}')
+            
+            # Eliminar el proyecto
             project.delete()
             messages.success(request, f'Proyecto "{project_name}" eliminado exitosamente.')
             return redirect('project_list')
@@ -645,6 +726,274 @@ def project_delete_page(request, project_id):
         'user': request.user,
         'project': project
     })
+
+
+# =====================================================
+# VISTAS DE EVIDENCIAS
+# =====================================================
+
+@login_required
+def project_evidence_add(request, project_id):
+    """
+    Vista para agregar una evidencia a un proyecto.
+    """
+    import time
+    import os
+    from django.conf import settings
+    from webAMG.models import Project, ProjectEvidence, EvidencePhoto
+    
+    project = get_object_or_404(Project, id=project_id)
+    
+    if request.method == 'POST':
+        try:
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+            description = request.POST.get('description')
+            
+            # Validar fechas
+            if not start_date:
+                messages.error(request, 'Debe especificar la fecha de inicio.')
+                return redirect('project_detail', project_id=project_id)
+            
+            # Si no se especifica fecha de fin, usar la fecha de inicio
+            if not end_date:
+                end_date = start_date
+            
+            if end_date < start_date:
+                messages.error(request, 'La fecha de fin debe ser posterior o igual a la fecha de inicio.')
+                return redirect('project_detail', project_id=project_id)
+            
+            if not description:
+                messages.error(request, 'Debe proporcionar una descripción de la evidencia.')
+                return redirect('project_detail', project_id=project_id)
+            
+            # Crear la evidencia
+            evidence = ProjectEvidence.objects.create(
+                project=project,
+                start_date=start_date,
+                end_date=end_date,
+                description=description,
+                created_by=request.user
+            )
+            
+            # Procesar fotos
+            photos = request.FILES.getlist('photos')
+            print(f'=== DEBUG: Creando nueva evidencia ===')
+            print(f'Evidencia ID: {evidence.id}')
+            print(f'Fotos recibidas: {len(photos)}')
+            
+            if photos:
+                # Crear directorio si no existe
+                upload_dir = os.path.join(settings.MEDIA_ROOT, 'Proyectos', 'Evidencias')
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                for i, photo in enumerate(photos, start=1):
+                    # Generar nombre único para el archivo
+                    file_extension = os.path.splitext(photo.name)[1]
+                    unique_filename = f"evidence_{project.id}_{evidence.id}_{int(time.time())}_{i}{file_extension}"
+                    file_path = os.path.join(upload_dir, unique_filename)
+                    
+                    # Guardar el archivo
+                    with open(file_path, 'wb+') as destination:
+                        for chunk in photo.chunks():
+                            destination.write(chunk)
+                    
+                    # Guardar la foto en la base de datos
+                    new_photo = EvidencePhoto.objects.create(
+                        evidence=evidence,
+                        photo_url=os.path.join('Proyectos', 'Evidencias', unique_filename).replace('\\', '/'),
+                        photo_order=i,
+                        uploaded_by=request.user
+                    )
+                    print(f'  Foto {i}: {photo.name} -> ID={new_photo.id}, archivo={unique_filename}')
+                
+                print(f'Total de fotos guardadas: {len(photos)}')
+            else:
+                print('No se recibieron fotos')
+            
+            print(f'=== FIN DEBUG: Creando evidencia ===')
+            
+            messages.success(request, f'Evidencia agregada exitosamente al proyecto "{project.project_name}".')
+            return redirect('project_detail', project_id=project_id)
+            
+        except Exception as e:
+            messages.error(request, f'Error al agregar la evidencia: {str(e)}')
+            print(f"DEBUG: Exception: {e}")
+    
+    return redirect('project_detail', project_id=project_id)
+
+
+@login_required
+def project_evidence_edit(request, project_id, evidence_id):
+    """
+    Vista para editar una evidencia de un proyecto.
+    """
+    import time
+    import os
+    from django.conf import settings
+    from webAMG.models import Project, ProjectEvidence, EvidencePhoto
+    
+    project = get_object_or_404(Project, id=project_id)
+    evidence = get_object_or_404(ProjectEvidence, id=evidence_id, project=project)
+    
+    # Obtener las fotos existentes de la evidencia
+    existing_photos = evidence.photos.all().order_by('photo_order')
+    
+    if request.method == 'POST':
+        try:
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+            description = request.POST.get('description')
+            
+            # Validar fechas
+            if not start_date:
+                messages.error(request, 'Debe especificar la fecha de inicio.')
+                return redirect('project_detail', project_id=project_id)
+            
+            # Si no se especifica fecha de fin, usar la fecha de inicio
+            if not end_date:
+                end_date = start_date
+            
+            if end_date < start_date:
+                messages.error(request, 'La fecha de fin debe ser posterior o igual a la fecha de inicio.')
+                return redirect('project_detail', project_id=project_id)
+            
+            if not description:
+                messages.error(request, 'Debe proporcionar una descripción de la evidencia.')
+                return redirect('project_detail', project_id=project_id)
+            
+            # Actualizar la evidencia
+            evidence.start_date = start_date
+            evidence.end_date = end_date
+            evidence.description = description
+            evidence.save()
+            
+            print(f'=== DEBUG: Editando evidencia {evidence.id} ===')
+            
+            # Procesar nuevas fotos
+            photos = request.FILES.getlist('photos')
+            print(f'Nuevas fotos recibidas: {len(photos)}')
+            if photos:
+                # Crear directorio si no existe
+                upload_dir = os.path.join(settings.MEDIA_ROOT, 'Proyectos', 'Evidencias')
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                # Obtener el orden máximo actual
+                max_order = evidence.photos.aggregate(models.Max('photo_order'))['photo_order__max'] or 0
+                print(f'Orden máximo actual: {max_order}')
+                
+                for i, photo in enumerate(photos, start=max_order + 1):
+                    # Generar nombre único para el archivo
+                    file_extension = os.path.splitext(photo.name)[1]
+                    unique_filename = f"evidence_{project.id}_{evidence.id}_{int(time.time())}_{i}{file_extension}"
+                    file_path = os.path.join(upload_dir, unique_filename)
+                    
+                    # Guardar el archivo
+                    with open(file_path, 'wb+') as destination:
+                        for chunk in photo.chunks():
+                            destination.write(chunk)
+                    
+                    # Guardar la foto en la base de datos
+                    new_photo = EvidencePhoto.objects.create(
+                        evidence=evidence,
+                        photo_url=os.path.join('Proyectos', 'Evidencias', unique_filename).replace('\\', '/'),
+                        photo_order=i,
+                        uploaded_by=request.user
+                    )
+                    print(f'Foto guardada: ID={new_photo.id}, orden={i}, archivo={unique_filename}')
+            
+            # Procesar eliminación de fotos individuales
+            # Solo se eliminan las fotos que se marcan para eliminar explícitamente
+            delete_photos = request.POST.getlist('delete_photos')
+            if delete_photos:
+                for photo_id in delete_photos:
+                    try:
+                        photo = EvidencePhoto.objects.get(id=photo_id, evidence=evidence)
+                        # Eliminar archivo físico
+                        photo_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
+                        if os.path.exists(photo_path):
+                            os.remove(photo_path)
+                        # Eliminar registro de la base de datos
+                        photo.delete()
+                        print(f"Foto eliminada: ID={photo_id}")
+                    except EvidencePhoto.DoesNotExist:
+                        print(f"Foto no encontrada: ID={photo_id}")
+                        pass
+                print(f"Total fotos eliminadas: {len(delete_photos)}")
+            else:
+                print("No se marcó ninguna foto para eliminar")
+            
+            # Verificar el estado final de las fotos
+            final_photos = EvidencePhoto.objects.filter(evidence=evidence).order_by('photo_order')
+            print(f'Total de fotos después de edición: {final_photos.count()}')
+            for photo in final_photos:
+                print(f'  - ID={photo.id}, orden={photo.photo_order}, archivo={photo.photo_url}')
+            
+            messages.success(request, f'Evidencia actualizada exitosamente.')
+            return redirect('project_detail', project_id=project_id)
+            
+        except Exception as e:
+            messages.error(request, f'Error al actualizar la evidencia: {str(e)}')
+            print(f"DEBUG: Exception: {e}")
+    
+    return redirect('project_detail', project_id=project_id)
+
+
+@login_required
+def project_evidence_photos(request, project_id, evidence_id):
+    """
+    Vista para obtener las fotos de una evidencia (para mostrar en modal de edición).
+    """
+    from django.http import JsonResponse
+    from webAMG.models import Project, ProjectEvidence, EvidencePhoto
+    
+    project = get_object_or_404(Project, id=project_id)
+    evidence = get_object_or_404(ProjectEvidence, id=evidence_id, project=project)
+    
+    photos = EvidencePhoto.objects.filter(evidence=evidence).order_by('photo_order')
+    
+    photos_data = []
+    for photo in photos:
+        photos_data.append({
+            'id': photo.id,
+            'photo_url': photo.photo_url,
+            'caption': photo.caption or '',
+        })
+    
+    return JsonResponse({'photos': photos_data})
+
+
+@login_required
+def project_evidence_delete(request, project_id, evidence_id):
+    """
+    Vista para eliminar una evidencia de un proyecto.
+    """
+    from webAMG.models import Project, ProjectEvidence
+    
+    project = get_object_or_404(Project, id=project_id)
+    evidence = get_object_or_404(ProjectEvidence, id=evidence_id, project=project)
+    
+    if request.method == 'POST':
+        try:
+            # Eliminar archivos de fotos
+            import os
+            from django.conf import settings
+            for photo in evidence.photos.all():
+                photo_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
+                if os.path.exists(photo_path):
+                    os.remove(photo_path)
+            
+            # Eliminar la evidencia (esto eliminará también las fotos en cascada)
+            evidence.delete()
+            
+            messages.success(request, 'Evidencia eliminada exitosamente.')
+            return redirect('project_detail', project_id=project_id)
+            
+        except Exception as e:
+            messages.error(request, f'Error al eliminar la evidencia: {str(e)}')
+            print(f"DEBUG: Exception: {e}")
+    
+    return redirect('project_detail', project_id=project_id)
 
 
 # =====================================================
@@ -673,3 +1022,39 @@ class AboutView(TemplateView):
 class ContactView(TemplateView):
     """Vista de la página de contacto (versión basada en clase)."""
     template_name = "contact.html"
+
+
+# =====================================================
+# VISTA DE PRUEBA DE ZONA HORARIA
+# =====================================================
+
+@login_required
+def test_timezone_view(request):
+    """
+    Vista de prueba para verificar la zona horaria.
+    """
+    from webAMG.models import Project, User, ProjectEvidence
+    
+    # Obtener datos de prueba
+    now_utc = timezone.now()
+    now_local = timezone.localtime(now_utc)
+    
+    # Obtener un proyecto
+    project = Project.objects.first()
+    
+    # Obtener la última evidencia
+    last_evidence = ProjectEvidence.objects.all().order_by('-updated_at').first()
+    
+    context = {
+        'user': request.user,
+        'now_utc': now_utc,
+        'now_local': now_local,
+        'now_format_utc': now_utc.strftime('%d/%m/%Y %H:%M:%S'),
+        'now_format_local': now_local.strftime('%d/%m/%Y %H:%M:%S'),
+        'timezone_info': timezone.get_current_timezone_name(),
+        'project': project,
+        'last_evidence': last_evidence,
+    }
+    
+    return render(request, 'test_timezone.html', context)
+

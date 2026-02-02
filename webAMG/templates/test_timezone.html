@@ -1,0 +1,96 @@
+{% extends "base_dashboard.html" %}
+{% load static %}
+
+{% block active_projects_class %}{% endblock %}
+{% block page_title %}Prueba de Zona Horaria{% endblock %}
+{% block page_subtitle %}Verificación de timestamps{% endblock %}
+
+{% block dashboard_content %}
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Configuración de Django</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-medium text-gray-700 mb-2">Hora Actual</h4>
+            <p class="text-sm text-gray-600">UTC: {{ now_utc }}</p>
+            <p class="text-sm text-gray-600">Local: {{ now_local }}</p>
+            <p class="text-sm text-gray-600">UTC formateado: {{ now_format_utc }}</p>
+            <p class="text-sm text-gray-600">Local formateado: {{ now_format_local }}</p>
+            <p class="text-sm text-gray-600">Zona horaria: {{ timezone_info }}</p>
+        </div>
+        
+        {% if project %}
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-medium text-gray-700 mb-2">Proyecto: {{ project.project_name }}</h4>
+            <p class="text-sm text-gray-600">ID: {{ project.id }}</p>
+            <p class="text-sm text-gray-600">Fecha inicio: {{ project.start_date|date:"d/m/Y" }}</p>
+            <p class="text-sm text-gray-600">Created at (raw): {{ project.created_at }}</p>
+            <p class="text-sm text-gray-600">Created at (filtro): {{ project.created_at|date:"d/m/Y H:i" }}</p>
+            <p class="text-sm text-gray-600">Updated at (raw): {{ project.updated_at }}</p>
+            <p class="text-sm text-gray-600">Updated at (filtro): {{ project.updated_at|date:"d/m/Y H:i" }}</p>
+        </div>
+        {% endif %}
+        
+        {% if last_evidence %}
+        <div class="bg-gray-50 rounded-lg p-4 md:col-span-2">
+            <h4 class="font-medium text-gray-700 mb-2">Última Evidencia: #{{ last_evidence.id }}</h4>
+            <p class="text-sm text-gray-600">Proyecto: {{ last_evidence.project.project_name }}</p>
+            <p class="text-sm text-gray-600">Created at (raw): {{ last_evidence.created_at }}</p>
+            <p class="text-sm text-gray-600">Created at (filtro): {{ last_evidence.created_at|date:"d/m/Y H:i" }}</p>
+            <p class="text-sm text-gray-600">Updated at (raw): {{ last_evidence.updated_at }}</p>
+            <p class="text-sm text-gray-600">Updated at (filtro): {{ last_evidence.updated_at|date:"d/m/Y H:i" }}</p>
+            <p class="text-sm text-gray-600">Fotos: {{ last_evidence.photos.count }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="bg-blue-50 rounded-xl border border-blue-200 p-6 mb-6">
+    <h3 class="text-lg font-semibold text-blue-900 mb-4">Verificación de Zona Horaria</h3>
+    <ul class="space-y-2 text-sm">
+        <li>
+            <span class="font-medium text-blue-900">Configuración correcta:</span>
+            <span class="text-blue-700"> TIME_ZONE = 'America/Guatemala', USE_TZ = True</span>
+        </li>
+        <li>
+            <span class="font-medium text-blue-900">Comportamiento esperado:</span>
+            <span class="text-blue-700"> Django guarda en UTC, pero muestra en zona horaria local</span>
+        </li>
+        <li>
+            <span class="font-medium text-blue-900">Verificación:</span>
+            <span class="text-blue-700"> Local formateado debe ser 6 horas menos que UTC formateado</span>
+        </li>
+        <li>
+            <span class="font-medium text-blue-900">Filtro |date:</span>
+            <span class="text-blue-700"> Convierte automáticamente de UTC a zona horaria local</span>
+        </li>
+    </ul>
+</div>
+
+<div class="bg-green-50 rounded-xl border border-green-200 p-6">
+    <h3 class="text-lg font-semibold text-green-900 mb-4">Verificación de Fotos de Evidencias</h3>
+    <ul class="space-y-2 text-sm">
+        <li>
+            <span class="font-medium text-green-900">Altura de fotos:</span>
+            <span class="text-green-700"> h-40 (160px) en móvil, h-48 (192px) en desktop</span>
+        </li>
+        <li>
+            <span class="font-medium text-green-900">Objet:</span>
+            <span class="text-green-700"> object-contain para mostrar la foto completa sin recortar</span>
+        </li>
+        <li>
+            <span class="font-medium text-green-900">Fondo:</span>
+            <span class="text-green-700"> bg-gray-50 p-2 para mejor contraste y espaciado</span>
+        </li>
+        <li>
+            <span class="font-medium text-green-900">Grid dinámico:</span>
+            <span class="text-green-700"> Se ajusta automáticamente según la cantidad de fotos</span>
+        </li>
+    </ul>
+</div>
+
+<div class="flex items-center justify-end space-x-3 pt-4">
+    <a href="{% url 'dashboard' %}" class="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+        Volver al Dashboard
+    </a>
+</div>
+{% endblock %}

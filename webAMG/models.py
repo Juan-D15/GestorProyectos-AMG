@@ -517,3 +517,63 @@ class DailyActivity(models.Model):
 
     def __str__(self):
         return f"{self.activity_type} - {self.activity_date}"
+
+
+# =====================================================
+# MODELO DE EVIDENCIAS DE PROYECTOS
+# =====================================================
+
+class ProjectEvidence(models.Model):
+    """
+    Evidencias de proyectos con rangos de fechas, descripción y fotos.
+    """
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='evidences')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    description = models.TextField()
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'project_evidences'
+        verbose_name = 'Evidencia de Proyecto'
+        verbose_name_plural = 'Evidencias de Proyectos'
+        indexes = [
+            models.Index(fields=['project']),
+            models.Index(fields=['start_date', 'end_date']),
+            models.Index(fields=['created_by']),
+        ]
+
+    def __str__(self):
+        return f"{self.project.project_name} - {self.start_date} a {self.end_date}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.end_date < self.start_date:
+            raise ValidationError({'end_date': 'La fecha de fin debe ser posterior o igual a la fecha de inicio.'})
+
+
+class EvidencePhoto(models.Model):
+    """
+    Fotos asociadas a las evidencias de proyectos.
+    """
+    evidence = models.ForeignKey(ProjectEvidence, on_delete=models.CASCADE, related_name='photos')
+    photo_url = models.TextField()
+    caption = models.TextField(blank=True, null=True)
+    photo_order = models.IntegerField(default=1)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='uploaded_by')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'evidence_photos'
+        verbose_name = 'Foto de Evidencia'
+        verbose_name_plural = 'Fotos de Evidencias'
+        indexes = [
+            models.Index(fields=['evidence']),
+            models.Index(fields=['uploaded_by']),
+            models.Index(fields=['uploaded_at']),
+        ]
+
+    def __str__(self):
+        return f"Foto {self.photo_order} - {self.evidence}"
