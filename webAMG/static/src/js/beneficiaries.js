@@ -78,6 +78,28 @@ function closeBeneficiaryModal() {
     }
 }
 
+// Cerrar modal de beneficiarios al hacer clic fuera del contenido
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('beneficiaryModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeBeneficiaryModal();
+            }
+        });
+    }
+});
+
+// Cerrar modal de beneficiarios con la tecla Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('beneficiaryModal');
+        if (modal && !modal.classList.contains('hidden')) {
+            closeBeneficiaryModal();
+        }
+    }
+});
+
 // Toggle selección de beneficiario
 function toggleBeneficiary(element) {
     const id = element.getAttribute('data-id');
@@ -96,19 +118,79 @@ function toggleBeneficiary(element) {
         checkbox.classList.remove('bg-[#8a4534]', 'border-[#8a4534]');
         checkbox.classList.add('border-gray-300');
         checkIcon.classList.add('hidden');
-    } else {
-        // Seleccionar
-        selectedBeneficiaries.push({ id, name, dpi, initials });
-        checkbox.classList.add('bg-[#8a4534]', 'border-[#8a4534]');
-        checkbox.classList.remove('border-gray-300');
-        checkIcon.classList.remove('hidden');
-    }
+     } else {
+         // Seleccionar
+         selectedBeneficiaries.push({ id, name, dpi, initials });
+         checkbox.classList.remove('bg-gray-300', 'border-gray-300');
+         checkbox.classList.add('bg-[#8a4534]', 'border-[#8a4534]');
+         checkIcon.classList.remove('hidden');
+         console.log('  Seleccionado');
+     }
     
+    console.log('Beneficiarios seleccionados:', selectedBeneficiaries);
+    updateSelectedCount();
+}
+
+// Función para quitar un beneficiario de la evidencia (cuando se está editando)
+function removeBeneficiaryFromEvidence(beneficiaryId) {
+    console.log('Quitando beneficiario de evidencia:', beneficiaryId);
+    
+    // Obtener el input oculto de beneficiarios del formulario de evidencia
+    const evidenceBeneficiariesInput = document.getElementById('evidenceBeneficiariesInput');
+    const selectedBeneficiariesListContainer = document.getElementById('selectedBeneficiariesList');
+    
+    if (evidenceBeneficiariesInput && selectedBeneficiariesListContainer) {
+        // Obtener la lista actual de IDs
+        const currentIds = evidenceBeneficiariesInput.value ? evidenceBeneficiariesInput.value.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id) && id !== '') : [];
+        
+        console.log('Beneficiarios actuales en evidencia:', currentIds);
+        
+        // Remover el beneficiario de la lista
+        const newIds = currentIds.filter(id => id !== beneficiaryId);
+        evidenceBeneficiariesInput.value = newIds.join(',');
+        
+        console.log('Beneficiarios después de quitar:', newIds);
+        
+        // Remover el elemento visual de la lista de seleccionados
+        const beneficiaryElements = selectedBeneficiariesListContainer.querySelectorAll('.beneficiary-item');
+        beneficiaryElements.forEach(function(element) {
+            if (parseInt(element.getAttribute('data-id')) === beneficiaryId) {
+                element.remove();
+            }
+        });
+        
+        // Actualizar contador en el botón principal
+        const selectButtonSpan = document.querySelector('#evidenceBeneficiariesInput')?.parent.querySelector('span');
+        if (selectButtonSpan) {
+            if (newIds.length > 0) {
+                selectButtonSpan.textContent = `${newIds.length} seleccionados`;
+                selectButtonSpan.classList.remove('hidden');
+            } else {
+                selectButtonSpan.classList.add('hidden');
+            }
+        }
+        
+        // Actualizar contador en la lista de seleccionados
+        const countSpan = selectedBeneficiariesListContainer.querySelector('.selected-beneficiaries-count');
+        if (countSpan) {
+            countSpan.textContent = newIds.length;
+        }
+        
+        // Si ya no hay beneficiarios seleccionados, ocultar la lista de seleccionados
+        if (newIds.length === 0 && selectedBeneficiariesListContainer) {
+            selectedBeneficiariesListContainer.classList.add('hidden');
+        }
+        
+        console.log('Beneficiario quitado exitosamente');
+    }
+}
+
+// Actualizar contador de beneficiarios seleccionados en el modal
+function updateSelectedCount() {
     const selectedCount = document.getElementById('selectedCount');
     if (selectedCount) {
         selectedCount.textContent = selectedBeneficiaries.length;
     }
-    console.log('Beneficiario seleccionado/deseleccionado:', id, 'Total:', selectedBeneficiaries.length);
 }
 
 // Filtrar beneficiarios
@@ -202,24 +284,31 @@ function addSelectedBeneficiaries() {
 // Eliminar beneficiario de la lista
 function removeBeneficiary(id) {
     console.log('Eliminando beneficiario:', id);
-    selectedBeneficiaries = selectedBeneficiaries.filter(b => b.id !== id);
+    
+    // Convertir id a string para comparación
+    const idString = String(id);
+    
+    selectedBeneficiaries = selectedBeneficiaries.filter(b => String(b.id) !== idString);
     
     // Buscar el elemento con ambas clases posibles
-    const element = document.querySelector(`.beneficiary-selected[data-id="${id}"]`) ||
-                   document.querySelector(`.selected-beneficiary[data-id="${id}"]`);
+    const element = document.querySelector('.beneficiary-selected[data-id="' + idString + '"]') ||
+                   document.querySelector('.selected-beneficiary[data-id="' + idString + '"]');
     if (element) {
         element.remove();
     }
     
     // Si no hay beneficiarios, mostrar mensaje
     if (selectedBeneficiaries.length === 0) {
-        document.getElementById('selectedBeneficiariesList').innerHTML = `
-            <div class="text-center text-gray-500 py-8">
-                <i class="fas fa-users text-4xl mb-2"></i>
-                <p>No hay beneficiarios seleccionados</p>
-                <p class="text-sm">Haga clic en "Agregar Beneficiario" para seleccionar beneficiarios del sistema</p>
-            </div>
-        `;
+        const listContainer = document.getElementById('selectedBeneficiariesList');
+        if (listContainer) {
+            listContainer.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-users text-4xl mb-2"></i>
+                    <p>No hay beneficiarios seleccionados</p>
+                    <p class="text-sm">Haga clic en "Agregar Beneficiario" para seleccionar beneficiarios del sistema</p>
+                </div>
+            `;
+        }
     }
     
     // Actualizar el input hidden con los IDs restantes

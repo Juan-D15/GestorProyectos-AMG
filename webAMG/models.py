@@ -181,6 +181,8 @@ class User(models.Model):
         """
         Verifica si la contraseña proporcionada coincide con el hash almacenado.
         """
+        if raw_password is None:
+            return False
         return bcrypt.checkpw(
             raw_password.encode('utf-8'),
             self.password_hash.encode('utf-8')
@@ -339,6 +341,38 @@ class Project(models.Model):
 
     def __str__(self):
         return self.project_name
+    
+    def delete(self, *args, **kwargs):
+        """
+        Sobreescribir delete para eliminar también las imágenes físicas.
+        """
+        import os
+        from django.conf import settings
+        
+        # Eliminar imagen de portada
+        if self.cover_image_url:
+            cover_path = os.path.join(settings.MEDIA_ROOT, self.cover_image_url)
+            if os.path.exists(cover_path):
+                try:
+                    os.remove(cover_path)
+                    print(f"Imagen de portada eliminada: {cover_path}")
+                except Exception as e:
+                    print(f"Error al eliminar imagen de portada {cover_path}: {e}")
+        
+        # Eliminar todas las fotos de evidencias asociadas
+        for evidence in self.evidences.all():
+            for photo in evidence.photos.all():
+                if photo.photo_url:
+                    photo_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
+                    if os.path.exists(photo_path):
+                        try:
+                            os.remove(photo_path)
+                            print(f"Foto de evidencia eliminada: {photo_path}")
+                        except Exception as e:
+                            print(f"Error al eliminar foto de evidencia {photo_path}: {e}")
+        
+        # Llamar al método delete original
+        super().delete(*args, **kwargs)
 
     def clean(self):
         from django.core.exceptions import ValidationError
@@ -577,3 +611,144 @@ class EvidencePhoto(models.Model):
 
     def __str__(self):
         return f"Foto {self.photo_order} - {self.evidence}"
+
+
+# =====================================================
+# RELACIÓN EVIDENCIA-BENEFICIARIOS
+# =====================================================
+
+class EvidenceBeneficiary(models.Model):
+    """
+    Relación entre evidencias y beneficiarios participantes.
+    """
+    evidence = models.ForeignKey(ProjectEvidence, on_delete=models.CASCADE, related_name='beneficiaries')
+    beneficiary = models.ForeignKey(Beneficiary, on_delete=models.CASCADE, related_name='evidence_participations')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'evidence_beneficiaries'
+        verbose_name = 'Beneficiario de Evidencia'
+        verbose_name_plural = 'Beneficiarios de Evidencias'
+        indexes = [
+            models.Index(fields=['evidence']),
+            models.Index(fields=['beneficiary']),
+            models.Index(fields=['assigned_at']),
+        ]
+        unique_together = ['evidence', 'beneficiary']
+
+    def __str__(self):
+        return f"{self.beneficiary.full_name} - {self.evidence}"
+
+
+# =====================================================
+# RELACIÓN FASE-BENEFICIARIOS
+# =====================================================
+
+class PhaseBeneficiary(models.Model):
+    """
+    Relación entre fases y beneficiarios asignados.
+    """
+    phase = models.ForeignKey(ProjectPhase, on_delete=models.CASCADE, related_name='beneficiaries')
+    beneficiary = models.ForeignKey(Beneficiary, on_delete=models.CASCADE, related_name='phase_participations')
+    assigned_date = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
+
+    class Meta:
+        db_table = 'phase_beneficiaries'
+        verbose_name = 'Beneficiario de Fase'
+        verbose_name_plural = 'Beneficiarios de Fases'
+        indexes = [
+            models.Index(fields=['phase']),
+            models.Index(fields=['beneficiary']),
+            models.Index(fields=['assigned_date']),
+        ]
+        unique_together = ['phase', 'beneficiary']
+
+    def __str__(self):
+        return f"{self.beneficiary.full_name} - {self.phase}"
+
+
+# =====================================================
+# MODELO DE EVIDENCIAS DE FASES
+# =====================================================
+
+class PhaseEvidence(models.Model):
+    """
+    Evidencias de fases de proyectos con rangos de fechas, descripción y fotos.
+    """
+    phase = models.ForeignKey(ProjectPhase, on_delete=models.CASCADE, related_name='evidences')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    description = models.TextField()
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'phase_evidences'
+        verbose_name = 'Evidencia de Fase'
+        verbose_name_plural = 'Evidencias de Fases'
+        indexes = [
+            models.Index(fields=['phase']),
+            models.Index(fields=['start_date', 'end_date']),
+            models.Index(fields=['created_by']),
+        ]
+
+    def __str__(self):
+        return f"{self.phase} - {self.start_date} a {self.end_date}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.end_date < self.start_date:
+            raise ValidationError({'end_date': 'La fecha de fin debe ser posterior o igual a la fecha de inicio.'})
+
+
+class PhaseEvidencePhoto(models.Model):
+    """
+    Fotos asociadas a las evidencias de fases.
+    """
+    phase_evidence = models.ForeignKey(PhaseEvidence, on_delete=models.CASCADE, related_name='photos')
+    photo_url = models.TextField()
+    caption = models.TextField(blank=True, null=True)
+    photo_order = models.IntegerField(default=1)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='uploaded_by')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'phase_evidence_photos'
+        verbose_name = 'Foto de Evidencia de Fase'
+        verbose_name_plural = 'Fotos de Evidencias de Fases'
+        indexes = [
+            models.Index(fields=['phase_evidence']),
+            models.Index(fields=['uploaded_by']),
+            models.Index(fields=['uploaded_at']),
+        ]
+
+    def __str__(self):
+        return f"Foto {self.photo_order} - {self.phase_evidence}"
+
+
+class PhaseEvidenceBeneficiary(models.Model):
+    """
+    Relación entre evidencias de fases y beneficiarios participantes.
+    """
+    phase_evidence = models.ForeignKey(PhaseEvidence, on_delete=models.CASCADE, related_name='beneficiaries')
+    beneficiary = models.ForeignKey(Beneficiary, on_delete=models.CASCADE, related_name='phase_evidence_participations')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'phase_evidence_beneficiaries'
+        verbose_name = 'Beneficiario de Evidencia de Fase'
+        verbose_name_plural = 'Beneficiarios de Evidencias de Fases'
+        indexes = [
+            models.Index(fields=['phase_evidence']),
+            models.Index(fields=['beneficiary']),
+            models.Index(fields=['assigned_at']),
+        ]
+        unique_together = ['phase_evidence', 'beneficiary']
+
+    def __str__(self):
+        return f"{self.beneficiary.full_name} - {self.phase_evidence}"

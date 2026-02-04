@@ -22,6 +22,19 @@ function previewImage(input) {
             preview.src = e.target.result;
             container.classList.remove('hidden');
             inputContainer.classList.add('hidden');
+            
+            // Asegurar que la imagen se cargue completamente antes de ajustar
+            preview.onload = function() {
+                // Ajustar altura del contenedor a la altura natural de la imagen
+                const naturalHeight = preview.naturalHeight;
+                const naturalWidth = preview.naturalWidth;
+                const containerHeight = Math.min(naturalHeight, 400); // Altura máxima de 400px
+                
+                // Ajustar el estilo de la imagen para que llene el contenedor
+                preview.style.height = 'auto';
+                preview.style.maxHeight = containerHeight + 'px';
+                preview.style.maxWidth = '100%';
+            };
         };
         reader.readAsDataURL(input.files[0]);
     }
@@ -37,4 +50,9 @@ function removeCoverImage() {
     preview.src = '';
     container.classList.add('hidden');
     inputContainer.classList.remove('hidden');
+    
+    // Resetear estilos
+    preview.style.height = '';
+    preview.style.maxHeight = '';
+    preview.style.maxWidth = '';
 }

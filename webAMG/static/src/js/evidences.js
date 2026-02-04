@@ -38,6 +38,35 @@ function openEvidenceModal() {
     // Limpiar la lista de fotos seleccionadas
     selectedPhotos = [];
     
+    // Limpiar el estado de beneficiarios
+    const beneficiariesInput = document.getElementById('evidenceBeneficiariesInput');
+    if (beneficiariesInput) {
+        beneficiariesInput.value = '';
+    }
+    
+    // Ocultar el badge de beneficiarios seleccionados
+    const badgeElement = document.getElementById('selectedBeneficiariesBadge');
+    if (badgeElement) {
+        badgeElement.classList.add('hidden');
+    }
+    
+    // Ocultar el contenedor de lista de beneficiarios seleccionados
+    const container = document.getElementById('selectedBeneficiariesContainer');
+    if (container) {
+        container.classList.add('hidden');
+    }
+    
+    // Limpiar la lista de beneficiarios seleccionados
+    const list = document.getElementById('selectedBeneficiariesList');
+    if (list) {
+        list.innerHTML = '<p class="text-sm text-gray-500">No hay beneficiarios seleccionados</p>';
+    }
+    
+    // Resetear la variable global de beneficiarios seleccionados
+    if (typeof selectedBeneficiaryIds !== 'undefined') {
+        selectedBeneficiaryIds = [];
+    }
+    
     console.log('Estado limpiado para nueva evidencia');
     console.log('selectedPhotos:', selectedPhotos.length);
     
@@ -93,6 +122,9 @@ function openEditEvidenceModal(button) {
     
     // Cargar las fotos existentes de la evidencia
     loadExistingPhotos(evidenceId);
+    
+    // Cargar los beneficiarios existentes de la evidencia
+    loadExistingBeneficiaries(evidenceId);
 }
 
 function closeEvidenceModal() {
@@ -123,8 +155,207 @@ function closeEvidenceModal() {
     // Limpiar la lista de fotos seleccionadas
     selectedPhotos = [];
     
+    // Limpiar el estado de beneficiarios
+    const beneficiariesInput = document.getElementById('evidenceBeneficiariesInput');
+    if (beneficiariesInput) {
+        beneficiariesInput.value = '';
+    }
+    
+    // Ocultar el badge de beneficiarios seleccionados
+    const badgeElement = document.getElementById('selectedBeneficiariesBadge');
+    if (badgeElement) {
+        badgeElement.classList.add('hidden');
+    }
+    
+    // Ocultar el contenedor de lista de beneficiarios seleccionados
+    const container = document.getElementById('selectedBeneficiariesContainer');
+    if (container) {
+        container.classList.add('hidden');
+    }
+    
+    // Limpiar la lista de beneficiarios seleccionados
+    const list = document.getElementById('selectedBeneficiariesList');
+    if (list) {
+        list.innerHTML = '<p class="text-sm text-gray-500">No hay beneficiarios seleccionados</p>';
+    }
+    
+    // Resetear la variable global de beneficiarios seleccionados
+    if (typeof selectedBeneficiaryIds !== 'undefined') {
+        selectedBeneficiaryIds = [];
+    }
+    
     console.log('Modal cerrado y estado limpiado');
 }
+
+// Función para abrir el modal de detalles de evidencia
+function openEvidenceDetailsModal(button) {
+    const evidenceId = button.getAttribute('data-evidence-id');
+    const startDate = button.getAttribute('data-start-date');
+    const endDate = button.getAttribute('data-end-date');
+    const description = button.getAttribute('data-description');
+    
+    console.log(`Abriendo modal de detalles para evidencia ${evidenceId}`);
+    
+    // Llenar los datos básicos
+    document.getElementById('evidenceDetailStartDate').textContent = startDate;
+    document.getElementById('evidenceDetailEndDate').textContent = endDate;
+    document.getElementById('evidenceDetailDescription').textContent = description;
+    
+    // Limpiar contenedores
+    const photosContainer = document.getElementById('evidenceDetailPhotos');
+    const beneficiariesContainer = document.getElementById('evidenceDetailBeneficiaries');
+    photosContainer.innerHTML = '';
+    beneficiariesContainer.innerHTML = '';
+    
+    // Cargar fotos de la evidencia
+    loadEvidenceDetailsPhotos(evidenceId);
+    
+    // Cargar beneficiarios de la evidencia
+    loadEvidenceDetailsBeneficiaries(evidenceId);
+    
+    // Mostrar el modal
+    document.getElementById('evidenceDetailsModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+// Función para cerrar el modal de detalles de evidencia
+function closeEvidenceDetailsModal() {
+    console.log('Cerrando modal de detalles de evidencia');
+    document.getElementById('evidenceDetailsModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+// Función para cargar las fotos de los detalles de evidencia
+function loadEvidenceDetailsPhotos(evidenceId) {
+    const projectId = document.getElementById('evidenceForm').action.match(/\/proyectos\/(\d+)\//)[1];
+    const photosContainer = document.getElementById('evidenceDetailPhotos');
+    const photosSection = document.getElementById('evidenceDetailPhotosContainer');
+    
+    console.log(`Cargando fotos para detalles de evidencia ${evidenceId}...`);
+    
+    fetch(`/dashboard/proyectos/${projectId}/evidencias/${evidenceId}/fotos/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.photos && data.photos.length > 0) {
+                photosSection.classList.remove('hidden');
+                
+                data.photos.forEach(photo => {
+                    const photoDiv = document.createElement('div');
+                    photoDiv.className = 'relative group';
+                    
+                    const img = document.createElement('img');
+                    img.src = '/media/' + photo.photo_url;
+                    img.className = 'w-full h-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity';
+                    img.alt = photo.caption || 'Foto de evidencia';
+                    img.onclick = function() {
+                        document.getElementById('photoModalImage').src = '/media/' + photo.photo_url;
+                        document.getElementById('photoModal').classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                    };
+                    
+                    photoDiv.appendChild(img);
+                    photosContainer.appendChild(photoDiv);
+                });
+                
+                console.log(`Se mostraron ${data.photos.length} fotos en los detalles`);
+            } else {
+                photosSection.classList.add('hidden');
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar fotos de detalles:', error);
+            photosSection.classList.add('hidden');
+        });
+}
+
+// Función para cargar los beneficiarios de los detalles de evidencia
+function loadEvidenceDetailsBeneficiaries(evidenceId) {
+    const projectId = document.getElementById('evidenceForm').action.match(/\/proyectos\/(\d+)\//)[1];
+    const beneficiariesContainer = document.getElementById('evidenceDetailBeneficiaries');
+    const beneficiariesSection = document.getElementById('evidenceDetailBeneficiariesContainer');
+    
+    console.log(`=== Cargando beneficiarios para detalles de evidencia ${evidenceId} ===`);
+    console.log(`Project ID: ${projectId}`);
+    console.log(`Evidence ID: ${evidenceId}`);
+    console.log(`URL: /dashboard/proyectos/${projectId}/evidencias/${evidenceId}/beneficiarios/`);
+    
+    // Limpiar contenedor antes de cargar
+    beneficiariesContainer.innerHTML = '';
+    
+    fetch(`/dashboard/proyectos/${projectId}/evidencias/${evidenceId}/beneficiarios/`)
+        .then(response => {
+            console.log(`Response status: ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Datos recibidos:', data);
+            
+            if (data.beneficiaries && data.beneficiaries.length > 0) {
+                console.log('Procesando beneficiarios para mostrar...');
+                beneficiariesSection.classList.remove('hidden');
+                
+                data.beneficiaries.forEach((beneficiary, index) => {
+                    console.log(`Procesando beneficiario ${index + 1}:`, beneficiary);
+                    
+                    const beneficiaryDiv = document.createElement('div');
+                    beneficiaryDiv.className = 'flex items-center justify-between bg-white rounded-lg p-3 border border-gray-200';
+                    
+                    let initials = '';
+                    if (beneficiary.first_name) {
+                        initials += beneficiary.first_name[0];
+                    }
+                    if (beneficiary.last_name) {
+                        initials += beneficiary.last_name[0];
+                    }
+                    
+                    console.log(`Iniciales: ${initials}`);
+                    
+                    beneficiaryDiv.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center text-white text-sm font-semibold">
+                                <span>${initials}</span>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-900">${beneficiary.first_name} ${beneficiary.last_name}</p>
+                                <p class="text-xs text-gray-500">
+                                    ${beneficiary.cui_dpi ? 'DPI: ' + beneficiary.cui_dpi : 'Sin DPI'}
+                                    ${beneficiary.community ? ' • ' + beneficiary.community : ''}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    beneficiariesContainer.appendChild(beneficiaryDiv);
+                });
+                
+                console.log(`Se mostraron ${data.beneficiaries.length} beneficiarios en los detalles`);
+            } else {
+                console.log('No hay beneficiarios asociados a esta evidencia');
+                beneficiariesSection.classList.add('hidden');
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar beneficiarios de detalles:', error);
+            beneficiariesSection.classList.add('hidden');
+        });
+}
+
+// Cerrar modal de detalles al hacer clic fuera del contenido
+document.getElementById('evidenceDetailsModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeEvidenceDetailsModal();
+    }
+});
+
+// Cerrar modal de detalles con la tecla Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeEvidenceDetailsModal();
+    }
+});
 
 // Función para cargar las fotos existentes de una evidencia
 function loadExistingPhotos(evidenceId) {
@@ -191,6 +422,83 @@ function loadExistingPhotos(evidenceId) {
         })
         .catch(error => {
             console.error('Error al cargar fotos existentes:', error);
+        });
+}
+
+// Función para cargar los beneficiarios existentes de una evidencia
+function loadExistingBeneficiaries(evidenceId) {
+    // Hacer una petición AJAX para obtener los beneficiarios existentes
+    const projectId = document.getElementById('evidenceForm').action.match(/\/proyectos\/(\d+)\//)[1];
+    
+    console.log(`=== Cargando beneficiarios existentes para evidencia ${evidenceId} ===`);
+    console.log(`URL: /dashboard/proyectos/${projectId}/evidencias/${evidenceId}/beneficiarios/`);
+    
+    fetch(`/dashboard/proyectos/${projectId}/evidencias/${evidenceId}/beneficiarios/`)
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Beneficiarios recibidos del servidor:', data.beneficiaries);
+            
+            if (data.beneficiaries && data.beneficiaries.length > 0) {
+                // Actualizar el input oculto con los IDs de los beneficiarios
+                const beneficiariesInput = document.getElementById('evidenceBeneficiariesInput');
+                
+                if (!beneficiariesInput) {
+                    console.error('No se encontró el input de beneficiarios');
+                    return;
+                }
+                
+                const beneficiaryIds = data.beneficiaries.map(b => b.id);
+                beneficiariesInput.value = beneficiaryIds.join(',');
+                
+                console.log(`Input de beneficiarios actualizado: ${beneficiariesInput.value}`);
+                
+                // Actualizar el badge en el botón
+                const badgeElement = document.getElementById('selectedBeneficiariesBadge');
+                if (badgeElement) {
+                    badgeElement.textContent = `${beneficiaryIds.length} seleccionados`;
+                    badgeElement.classList.remove('hidden');
+                    console.log(`Badge actualizado: ${badgeElement.textContent}`);
+                }
+                
+                // Actualizar la variable global de beneficiarios seleccionados
+                if (typeof selectedBeneficiaryIds !== 'undefined') {
+                    selectedBeneficiaryIds = [...beneficiaryIds];
+                    console.log(`Variable global selectedBeneficiaryIds actualizada:`, selectedBeneficiaryIds);
+                }
+                
+                // Actualizar la lista visual de beneficiarios seleccionados
+                if (typeof updateSelectedBeneficiariesList === 'function') {
+                    console.log('Llamando a updateSelectedBeneficiariesList()');
+                    updateSelectedBeneficiariesList();
+                } else {
+                    console.error('La función updateSelectedBeneficiariesList no está definida');
+                }
+                
+                console.log(`=== Beneficiarios cargados: ${beneficiaryIds.length} ===`);
+            } else {
+                console.log('No hay beneficiarios asignados a esta evidencia');
+                // Limpiar el input y ocultar la lista
+                const beneficiariesInput = document.getElementById('evidenceBeneficiariesInput');
+                if (beneficiariesInput) {
+                    beneficiariesInput.value = '';
+                }
+                
+                const badgeElement = document.getElementById('selectedBeneficiariesBadge');
+                if (badgeElement) {
+                    badgeElement.classList.add('hidden');
+                }
+                
+                const container = document.getElementById('selectedBeneficiariesContainer');
+                if (container) {
+                    container.classList.add('hidden');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar beneficiarios existentes:', error);
         });
 }
 
@@ -299,18 +607,27 @@ function deleteEvidencePhoto(button) {
         // Si es una foto nueva, simplemente eliminar del DOM y del array
         photoElement.remove();
     } else {
-        // Si es una foto existente, agregar a la lista de fotos a eliminar
-        // Crear un campo oculto para el ID de la foto a eliminar
-        const deletePhotosInput = document.createElement('input');
-        deletePhotosInput.type = 'hidden';
-        deletePhotosInput.name = 'delete_photos';
-        deletePhotosInput.value = photoId;
-        document.getElementById('evidenceForm').appendChild(deletePhotosInput);
+        // Verificar si estamos en el formulario de evidencia (modal)
+        const evidenceForm = document.getElementById('evidenceForm');
+        const previewContainer = document.getElementById('evidencePhotosPreview');
         
-        console.log(`Foto existente ${photoId} marcada para eliminar`);
-        
-        // Eliminar la foto del DOM
-        photoElement.remove();
+        // SOLO procesar si estamos en el modal de evidencia con ID 'evidenceForm'
+        if (evidenceForm && evidenceForm.id === 'evidenceForm' && previewContainer) {
+            // Si es una foto existente, agregar a la lista de fotos a eliminar
+            // Crear un campo oculto para el ID de la foto a eliminar
+            const deletePhotosInput = document.createElement('input');
+            deletePhotosInput.type = 'hidden';
+            deletePhotosInput.name = 'photos_to_delete'; // Corregido: usar el nombre correcto que espera el backend
+            deletePhotosInput.value = photoId;
+            evidenceForm.appendChild(deletePhotosInput);
+            
+            console.log(`Foto existente ${photoId} marcada para eliminar`);
+            
+            // Eliminar la foto del DOM
+            photoElement.remove();
+        } else {
+            console.log('deleteEvidencePhoto ignorado: no estamos en el modal de evidencia correcto');
+        }
     }
 }
 
@@ -419,6 +736,40 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// Manejar el envío del formulario de eliminación de evidencia
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteEvidenceForm = document.getElementById('deleteEvidenceForm');
+    if (deleteEvidenceForm) {
+        deleteEvidenceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const actionUrl = this.action;
+            
+            fetch(actionUrl, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeDeleteEvidenceModal();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error al eliminar la evidencia');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al procesar la solicitud');
+            });
+        });
+    }
+});
+
 // Agregar depuración al submit del formulario de evidencia
 document.addEventListener('DOMContentLoaded', function() {
     const evidenceForm = document.getElementById('evidenceForm');
@@ -448,23 +799,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`  - Foto ID: ${input.value}`);
             });
             
+            // SOLO si es el formulario de evidencia con ID 'evidenceForm'
             // Si hay fotos nuevas en selectedPhotos, agregarlas al input antes de enviar
-            const photoInput = document.getElementById('evidencePhotosInput');
-            if (selectedPhotos.length > 0) {
-                console.log(`Agregando ${selectedPhotos.length} fotos al input file antes de enviar:`);
-                selectedPhotos.forEach((file, index) => {
-                    console.log(`  ${index + 1}. ${file.name} (${file.size} bytes)`);
-                });
-                
-                // Crear un nuevo FileList con todas las fotos seleccionadas
-                const dt = new DataTransfer();
-                selectedPhotos.forEach(function(file) {
-                    dt.items.add(file);
-                });
-                photoInput.files = dt.files;
-                console.log(`Fotos en el input después de asignar: ${photoInput.files.length}`);
-            } else {
-                console.log('No hay fotos nuevas para enviar');
+            if (evidenceForm.id === 'evidenceForm') {
+                const photoInput = document.getElementById('evidencePhotosInput');
+                if (selectedPhotos.length > 0 && photoInput) {
+                    console.log(`Agregando ${selectedPhotos.length} fotos al input file antes de enviar:`);
+                    selectedPhotos.forEach((file, index) => {
+                        console.log(`  ${index + 1}. ${file.name} (${file.size} bytes)`);
+                    });
+                    
+                    // Crear un nuevo FileList con todas las fotos seleccionadas
+                    const dt = new DataTransfer();
+                    selectedPhotos.forEach(function(file) {
+                        dt.items.add(file);
+                    });
+                    photoInput.files = dt.files;
+                    console.log(`Fotos en el input después de asignar: ${photoInput.files.length}`);
+                } else {
+                    console.log('No hay fotos nuevas para enviar');
+                }
             }
             
             console.log('=============================================');

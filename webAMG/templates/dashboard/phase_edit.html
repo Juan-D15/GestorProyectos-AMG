@@ -1,0 +1,220 @@
+{% extends "base_dashboard.html" %}
+{% load static %}
+
+{% block active_projects_class %}bg-[#8a4534]/10 text-[#8a4534]{% endblock %}
+{% block page_title %}Editar Fase{% endblock %}
+{% block page_subtitle %}Editar Fase {{ phase.phase_number }} de {{ project.project_name }}{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'src/js/projects.js' %}"></script>
+<script src="{% static 'src/js/beneficiaries_evidence.js' %}"></script>
+{% endblock %}
+
+{% block dashboard_content %}
+<!-- Botón de regreso -->
+<div class="mb-6">
+    <a href="{% url 'phase_detail' project.id phase.id %}" class="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors">
+        <i class="fas fa-arrow-left"></i>
+        <span>Volver a la Fase</span>
+    </a>
+</div>
+
+<!-- Formulario de edición de fase -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 max-w-4xl mx-auto">
+    <h3 class="text-lg font-semibold text-gray-900 mb-6">
+        <i class="fas fa-edit text-[#8a4534] mr-2"></i>Editar Fase {{ phase.phase_number }}
+    </h3>
+    <form method="POST" class="space-y-6">
+        {% csrf_token %}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Fase *</label>
+            <input type="text" name="phase_name" value="{{ phase.phase_name }}" required class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Descripción de la Fase</label>
+            <textarea name="description" rows="4" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]" placeholder="Describa los objetivos y actividades de esta fase...">{{ phase.description|default:'' }}</textarea>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio *</label>
+                <input type="date" name="start_date" value="{{ phase.start_date|date:'Y-m-d' }}" required class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Fin</label>
+                <input type="date" name="end_date" value="{{ phase.end_date|date:'Y-m-d'|default:'' }}" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Estado de la Fase</label>
+            <select name="status" required class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
+                <option value="pendiente" {% if phase.status == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                <option value="en_progreso" {% if phase.status == 'en_progreso' %}selected{% endif %}>En Progreso</option>
+                <option value="completada" {% if phase.status == 'completada' %}selected{% endif %}>Completada</option>
+                <option value="cancelada" {% if phase.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Beneficiarios de la Fase</label>
+            <div class="relative">
+                <button type="button" onclick="openBeneficiariesModalForPhase()" class="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-left hover:border-[#8a4534] hover:bg-[#8a4534]/5 transition-all">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <i class="fas fa-users text-gray-400 mr-3"></i>
+                            <span class="text-sm text-gray-700">Seleccionar beneficiarios...</span>
+                        </div>
+                        <span id="selectedBeneficiariesBadgePhase" class="text-xs bg-[#8a4534] text-white px-2 py-1 rounded-full hidden">{{ phase_beneficiaries|length }} seleccionados</span>
+                    </div>
+                </button>
+                <input type="hidden" name="beneficiaries" id="beneficiariesInputPhase" value="{% for b in phase_beneficiaries %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+            </div>
+            <!-- Lista de beneficiarios seleccionados -->
+            {% if phase_beneficiaries %}
+            <div id="selectedBeneficiariesContainerPhase" class="bg-gray-50 rounded-xl border border-gray-200 p-4 mt-3">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">Beneficiarios seleccionados ({{ phase_beneficiaries|length }})</h4>
+                <div id="selectedBeneficiariesListPhase" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {% for beneficiary in phase_beneficiaries %}
+                    <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#8a4534] to-[#334e76] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                                <span>{{ beneficiary.first_name|slice:":1" }}{{ beneficiary.last_name|slice:":1" }}</span>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-900 text-sm">{{ beneficiary.first_name }} {{ beneficiary.last_name }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {% if beneficiary.cui_dpi %}DPI: {{ beneficiary.cui_dpi }}{% endif %}
+                                    {% if beneficiary.community %} • {{ beneficiary.community }}{% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="flex items-center justify-end space-x-3 pt-6 border-t border-gray-100">
+            <a href="{% url 'phase_detail' project.id phase.id %}" class="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                Cancelar
+            </a>
+            <button type="submit" class="px-6 py-2.5 text-sm font-medium text-white bg-[#8a4534] hover:bg-[#a05240] rounded-lg transition-colors">
+                <i class="fas fa-save mr-2"></i>Guardar Cambios
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Modal de selección de beneficiarios -->
+<div id="beneficiariesModalForPhase" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Seleccionar Beneficiarios para la Fase</h3>
+                <button onclick="closeBeneficiariesModalForPhase()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            <div class="relative">
+                <input type="text" id="beneficiariesSearchPhase" placeholder="Buscar beneficiario..." class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
+                <i class="fas fa-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            </div>
+        </div>
+        <div id="beneficiariesListPhase" class="p-6 space-y-2 max-h-[60vh] overflow-y-auto">
+            {% for beneficiary in all_beneficiaries %}
+            <div class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:border-[#8a4534] transition-colors beneficiary-item-for-phase" data-id="{{ beneficiary.id }}" data-name="{{ beneficiary.first_name }} {{ beneficiary.last_name }}" data-dpi="{{ beneficiary.cui_dpi|default:'' }}" data-community="{{ beneficiary.community|default:'' }}">
+                <input type="checkbox" id="beneficiary_phase_{{ beneficiary.id }}" class="w-5 h-5 text-[#8a4534] focus:ring-2 focus:ring-[#8a4534]/20 rounded" onchange="updateBeneficiariesCountPhase()" {% if beneficiary.id in selected_beneficiary_ids %}checked{% endif %}>
+                <div class="flex-1">
+                    <p class="font-medium text-gray-900">{{ beneficiary.first_name }} {{ beneficiary.last_name }}</p>
+                    <p class="text-xs text-gray-500">
+                        {% if beneficiary.cui_dpi %}DPI: {{ beneficiary.cui_dpi }}{% endif %}
+                        {% if beneficiary.community %} • {{ beneficiary.community }}{% endif %}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="p-6 border-t border-gray-100 sticky bottom-0 bg-white">
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-gray-600"><span id="selectedBeneficiariesCountPhase">0</span> beneficiarios seleccionados</p>
+                <div class="flex items-center space-x-3">
+                    <button type="button" onclick="closeBeneficiariesModalForPhase()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="confirmBeneficiariesSelectionPhase()" class="px-4 py-2 text-sm font-medium text-white bg-[#8a4534] hover:bg-[#a05240] rounded-lg transition-colors">
+                        Aceptar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openBeneficiariesModalForPhase() {
+    document.getElementById('beneficiariesModalForPhase').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeBeneficiariesModalForPhase() {
+    document.getElementById('beneficiariesModalForPhase').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+function updateBeneficiariesCountPhase() {
+    const checkboxes = document.querySelectorAll('.beneficiary-item-for-phase input[type="checkbox"]:checked');
+    const count = checkboxes.length;
+    const countElement = document.getElementById('selectedBeneficiariesCountPhase');
+    const badgeElement = document.getElementById('selectedBeneficiariesBadgePhase');
+
+    countElement.textContent = count;
+    if (count > 0) {
+        badgeElement.textContent = count + ' seleccionados';
+        badgeElement.classList.remove('hidden');
+    } else {
+        badgeElement.classList.add('hidden');
+    }
+}
+
+function confirmBeneficiariesSelectionPhase() {
+    const checkboxes = document.querySelectorAll('.beneficiary-item-for-phase input[type="checkbox"]:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.closest('.beneficiary-item-for-phase').dataset.id);
+
+    document.getElementById('beneficiariesInputPhase').value = selectedIds.join(',');
+    updateBeneficiariesCountPhase();
+    closeBeneficiariesModalForPhase();
+}
+
+// Búsqueda de beneficiarios
+document.getElementById('beneficiariesSearchPhase')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.beneficiary-item-for-phase');
+
+    items.forEach(item => {
+        const name = item.dataset.name.toLowerCase();
+        const dpi = item.dataset.dpi.toLowerCase();
+        const community = item.dataset.community.toLowerCase();
+
+        if (name.includes(searchTerm) || dpi.includes(searchTerm) || community.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+// Cerrar modales al hacer clic fuera
+document.getElementById('beneficiariesModalForPhase').addEventListener('click', function(e) {
+    if (e.target === this) closeBeneficiariesModalForPhase();
+});
+
+// Cerrar modales con Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeBeneficiariesModalForPhase();
+    }
+});
+
+// Inicializar contador
+updateBeneficiariesCountPhase();
+</script>
+
+{% endblock %}

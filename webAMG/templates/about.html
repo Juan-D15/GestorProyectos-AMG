@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Acerca de - Maya Guatemala{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <a href="{% url 'dashboard' %}" class="text-gray-900 font-bold text-xl">Maya Guatemala</a>
+                </div>
+                <nav class="flex items-center space-x-4">
+                    <a href="{% url 'dashboard' %}" class="text-gray-600 hover:text-gray-900 text-sm">Inicio</a>
+                    <a href="{% url 'about' %}" class="text-gray-900 font-medium text-sm">Acerca de</a>
+                    <a href="{% url 'contact' %}" class="text-gray-600 hover:text-gray-900 text-sm">Contacto</a>
+                    <a href="{% url 'login' %}" class="bg-[#07680b] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#065509] transition-colors">
+                        Iniciar Sesión
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="bg-white rounded-lg border border-gray-200 p-8">
+                <h1 class="text-3xl font-bold text-gray-900 mb-6">Acerca de Maya Guatemala</h1>
+                
+                <div class="prose prose-gray max-w-none">
+                    <p class="text-gray-700 text-lg mb-6">
+                        Bienvenido al Sistema de Gestión de Proyectos de Maya Guatemala. Nuestra plataforma está diseñada para facilitar la administración y seguimiento de proyectos de desarrollo comunitario.
+                    </p>
+
+                    <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">Nuestra Misión</h2>
+                    <p class="text-gray-700 mb-6">
+                        Promover el desarrollo sostenible de las comunidades mayas a través de la gestión eficiente de proyectos que mejoren la calidad de vida de los beneficiarios.
+                    </p>
+
+                    <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">Características del Sistema</h2>
+                    <ul class="list-disc list-inside text-gray-700 space-y-2 mb-6">
+                        <li>Gestión integral de proyectos y fases</li>
+                        <li>Registro y seguimiento de beneficiarios</li>
+                        <li>Control de evidencias y documentación</li>
+                        <li>Ejecución presupuestaria y reportes</li>
+                        <li>Estadísticas y análisis de datos</li>
+                    </ul>
+
+                    <h2 class="text-2xl font-semibold text-gray-900 mt-8 mb-4">Tecnología</h2>
+                    <p class="text-gray-700">
+                        Nuestro sistema está construido con tecnologías modernas que garantizan seguridad, escalabilidad y una experiencia de usuario óptima.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-50 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="text-center text-sm text-gray-600">
+                <p>&copy; 2025 Maya Guatemala. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+</div>
+{% endblock %}

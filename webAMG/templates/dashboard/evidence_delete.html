@@ -1,0 +1,66 @@
+{% extends "base_dashboard.html" %}
+{% load static %}
+
+{% block active_projects_class %}bg-[#8a4534]/10 text-[#8a4534]{% endblock %}
+{% block page_title %}Eliminar Evidencia{% endblock %}
+{% block page_subtitle %}Confirmación de eliminación{% endblock %}
+
+{% block dashboard_content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+                <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">¿Está seguro?</h2>
+            <p class="text-gray-600">Esta acción no se puede deshacer. Se eliminará permanentemente la evidencia y todos sus datos asociados.</p>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Información de la Evidencia</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-500">Proyecto:</span>
+                    <span class="text-sm text-gray-900 font-medium">{{ project.project_name }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-500">Fecha de inicio:</span>
+                    <span class="text-sm text-gray-900">{{ evidence.start_date|date:"d/m/Y" }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-500">Fecha de fin:</span>
+                    <span class="text-sm text-gray-900">{{ evidence.end_date|date:"d/m/Y" }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-500">Creada por:</span>
+                    <span class="text-sm text-gray-900">{{ evidence.created_by.full_name|default:'N/A' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm font-medium text-gray-500">Fotos:</span>
+                    <span class="text-sm text-gray-900">{{ evidence.photos.count }}</span>
+                </div>
+            </div>
+         </div>
+
+        <!-- Confirmación de contraseña -->
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-3">Confirmación de Seguridad</h3>
+            <p class="text-gray-600 mb-4">Para eliminar la evidencia, debe confirmar su identidad ingresando su contraseña:</p>
+            <div class="max-w-md">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+                <input type="password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500" placeholder="Ingrese su contraseña">
+            </div>
+        </div>
+
+        <form method="post" class="flex items-center justify-end space-x-4">
+            {% csrf_token %}
+            <a href="{% url 'project_detail' project.id %}" class="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                Cancelar
+            </a>
+            <button type="submit" class="px-6 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                <i class="fas fa-trash mr-2"></i>Eliminar Evidencia
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

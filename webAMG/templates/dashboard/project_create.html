@@ -11,23 +11,6 @@
 {% endblock %}
 
 {% block dashboard_content %}
-<!-- Mensajes de error -->
-{% if messages %}
-    {% for message in messages %}
-        <div class="mb-6 p-4 rounded-lg {% if message.tags %}{% if 'error' in message.tags %}bg-red-100 border-red-200 text-red-700{% else %}bg-green-100 border-green-200 text-green-700{% endif %}{% else %}bg-blue-100 border-blue-200 text-blue-700{% endif %}" data-auto-dismiss="3000">
-            <div class="flex items-center">
-                {% if 'error' in message.tags %}
-                <i class="fas fa-exclamation-circle mr-3"></i>
-                {% elif 'success' in message.tags %}
-                <i class="fas fa-check-circle mr-3"></i>
-                {% else %}
-                <i class="fas fa-info-circle mr-3"></i>
-                {% endif %}
-                <p class="font-medium">{{ message }}</p>
-            </div>
-        </div>
-    {% endfor %}
-{% endif %}
 
 <!-- Form -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
@@ -55,14 +38,14 @@
         <!-- Ubicación -->
         <div class="border-b border-gray-100 pb-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">Ubicación</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Departamento</label>
-                    <input type="text" name="department" value="{{ error_department|default:'' }}"  onkeypress="return /[a-zA-Z\s]/.test(event.key)" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534] {% if error_department %}border-red-500{% endif %}" placeholder="Ejemplo: Alta Verapaz">
+                    <input type="text" name="department" value="{{ error_department|default:'' }}"  onkeypress="return /[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/.test(event.key)" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534] {% if error_department %}border-red-500{% endif %}" placeholder="Ejemplo: Alta Verapaz">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Municipio</label>
-                    <input type="text" name="municipality" value="{{ error_municipality|default:'' }}"  onkeypress="return /[a-zA-Z\s]/.test(event.key)" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534] {% if error_municipality %}border-red-500{% endif %}" placeholder="Ejemplo: Cobán">
+                    <input type="text" name="municipality" value="{{ error_municipality|default:'' }}"  onkeypress="return /[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/.test(event.key)" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534] {% if error_municipality %}border-red-500{% endif %}" placeholder="Ejemplo: Cobán">
                 </div>
                 <div class="md:col-span-3">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
@@ -96,8 +79,8 @@
                 </div>
                 <div class="flex items-center pt-6">
                     <label class="flex items-center space-x-2">
-                        <input type="checkbox" name="has_phases" id="hasPhases" class="w-5 h-5 text-[#8a4534] rounded focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]" onclick="togglePhases()">
-                        <span class="text-sm font-medium text-gray-700">Este proyecto tiene fases</span>
+                        <input type="checkbox" name="has_phases" id="hasPhases" class="w-5 h-5 text-gray-700 focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]" onclick="togglePhases()">
+                        <span class="ml-2 text-sm text-gray-600">Tiene fases</span>
                     </label>
                 </div>
             </div>
@@ -114,21 +97,21 @@
                             <div class="flex flex-col items-center space-y-2">
                                 <i class="fas fa-cloud-upload-alt text-3xl text-gray-400"></i>
                                 <div class="text-center">
-                                    <p class="text-sm font-medium text-gray-700">Subir imagen</p>
+                                    <p class="text-sm font-medium text-gray-700">Subir nueva imagen</p>
                                     <p class="text-xs text-gray-500">o arrastra y suelta aquí</p>
                                 </div>
                             </div>
                         </label>
                     </div>
-                </div>
-                <div id="imagePreviewContainer" class="hidden flex flex-col items-center">
-                    <div class="relative">
-                        <img id="imagePreview" src="" alt="Vista previa" class="w-50 h-32 object-cover rounded-lg border border-gray-300">
-                        <button type="button" id="removeImageBtn" onclick="removeCoverImage()" class="absolute -top-2 -right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors flex items-center justify-center">
-                            <i class="fas fa-times text-sm"></i>
-                        </button>
-                    </div>
-                </div>
+                 </div>
+                  <div id="imagePreviewContainer" class="hidden flex flex-col items-center justify-center p-6 bg-gray-50 rounded-xl">
+                     <div class="relative w-64">
+                         <img id="imagePreview" src="" alt="Vista previa" class="w-full h-32 object-cover rounded-lg border border-gray-300 shadow-md">
+                         <button type="button" id="removeImageBtn" onclick="removeCoverImage()" class="absolute -top-2 -right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors flex items-center justify-center">
+                             <i class="fas fa-times text-xs"></i>
+                         </button>
+                     </div>
+                 </div>
             </div>
         </div>
 
@@ -141,7 +124,7 @@
                     <span>Agregar Beneficiario</span>
                 </button>
             </div>
-            
+             
             <!-- Lista de Beneficiarios Seleccionados con Scroll -->
             <div id="selectedBeneficiariesList" class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-4 space-y-3">
                 <div class="text-center text-gray-500 py-8">
@@ -154,6 +137,9 @@
 
         <!-- Input hidden para beneficiarios -->
         <input type="hidden" name="beneficiaries" id="beneficiariesInput">
+        
+        <!-- Mensajes de error específicos -->
+        <div id="formErrorMessages"></div>
         
         <!-- Botones -->
         <div class="flex items-center justify-end space-x-3 pt-4">
@@ -232,5 +218,61 @@
         </div>
     </div>
 </div>
+
+<script>
+// Función para validar y mostrar errores específicos del formulario
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const errorMessagesDiv = document.getElementById('formErrorMessages');
+    
+    if (form && errorMessagesDiv) {
+        form.addEventListener('submit', function(e) {
+            // Limpiar errores anteriores
+            errorMessagesDiv.innerHTML = '';
+            
+            const project_name = form.querySelector('input[name="project_name"]').value.trim();
+            const project_code = form.querySelector('input[name="project_code"]').value.trim();
+            
+            let errors = [];
+            
+            // Validar nombre del proyecto
+            if (!project_name) {
+                errors.push('El nombre del proyecto es obligatorio');
+            }
+            
+            // Validar código del proyecto si se ingresó
+            if (project_code && !/^[a-zA-Z0-9-]+$/.test(project_code)) {
+                errors.push('El código solo puede contener letras, números y guiones');
+            }
+            
+            // Mostrar errores si los hay
+            if (errors.length > 0) {
+                e.preventDefault();
+                
+                errorMessagesDiv.innerHTML = `
+                    <div class="mb-6 p-4 rounded-lg bg-red-100 border-red-200 text-red-700" data-auto-dismiss="5000">
+                        <div class="mb-3">
+                            <div class="flex items-center">
+                                <i class="fas fa-exclamation-circle mr-2"></i>
+                                <p class="font-medium">Por favor corrija los siguientes errores:</p>
+                            </div>
+                        </div>
+                        <ul class="list-disc list-inside space-y-1 text-sm">
+                            ${errors.map(error => `<li>${error}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+                
+                // Scroll al inicio del formulario
+                form.scrollIntoView({ behavior: 'smooth' });
+                
+                // Disparar evento personalizado para el script de auto-dismiss
+                const customEvent = new CustomEvent('messagesUpdated', { detail: { messages: document.querySelectorAll('[data-auto-dismiss]') } });
+                document.dispatchEvent(customEvent);
+            }
+        });
+    }
+});
+</script>
 
 {% endblock %}
