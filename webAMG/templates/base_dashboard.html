@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block extra_css %}
+{% endblock %}
+
 {% block dashboard_sidebar %}
 <!-- Sidebar del Dashboard -->
 <aside class="w-64 bg-white border-r border-gray-200 flex flex-col fixed h-full z-30">
@@ -141,28 +144,15 @@
              </div>
          {% endif %}
 
-         <!-- Dashboard Content -->
-         <div class="p-6">
-             {% block dashboard_content %}{% endblock %}
-         </div>
-     </main>
-     
-      <script>
-          // Hacer que los mensajes desaparezcan después de un tiempo
-          document.addEventListener('DOMContentLoaded', function() {
-              // Buscar todos los mensajes con data-auto-dismiss
-              const allMessages = document.querySelectorAll('[data-auto-dismiss]');
-              allMessages.forEach(function(message) {
-                  const dismissTime = parseInt(message.getAttribute('data-auto-dismiss'));
-                  setTimeout(function() {
-                      message.style.transition = 'opacity 0';
-                      setTimeout(function() {
-                          message.remove();
-                      }, 300);
-                  }, dismissTime);
-              });
-          });
-      </script>
-     
-     </div>
-     {% endblock %}
+          <!-- Dashboard Content -->
+          <div class="p-6">
+              {% block dashboard_content %}{% endblock %}
+          </div>
+       </main>
+
+       </div>
+       {% endblock %}
+
+       {% block extra_js %}
+       <script src="{% static 'src/js/auto_dismiss.js' %}"></script>
+       {% endblock %}

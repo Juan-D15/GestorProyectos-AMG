@@ -1,0 +1,50 @@
+/* Estilos específicos para la página de detalles del proyecto */
+
+/* Scroll suave para navegación de anclas */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Compensación para encabezado fijo al hacer scroll a ancla */
+#evidencias-section {
+    scroll-margin-top: 80px;
+}
+
+/* Estilo personalizado para checkboxes mejorados */
+.custom-checkbox {
+    width: 1.5rem;
+    height: 1.5rem;
+    cursor: pointer;
+    border: 2px solid #d1d5db;
+    border-radius: 0.375rem;
+    background-color: white;
+    appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease-in-out;
+}
+
+.custom-checkbox:checked {
+    background-color: #8a4534;
+    border-color: #8a4534;
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 24 24' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21l7.59-7.59L17 4h-6z'/%3e%3c/svg%3e");
+    background-size: 1.5rem;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.custom-checkbox:hover {
+    border-color: #8a4534;
+    box-shadow: 0 2px 4px rgba(138, 69, 52, 0.1);
+}
+
+.custom-checkbox:focus {
+    outline: none;
+    box-shadow: 0 2px 4px rgba(138, 69, 52, 0.2);
+}
+
+.custom-checkbox:checked:hover {
+    background-color: #a05240;
+    border-color: #a05240;
+}

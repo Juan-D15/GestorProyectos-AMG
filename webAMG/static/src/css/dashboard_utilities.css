@@ -1,0 +1,53 @@
+/* Estilos de utilidad para modales y formularios */
+
+/* Ocultar elementos */
+.password-eye-hidden {
+    display: none !important;
+}
+
+/* Indicador de checkbox para beneficiarios */
+.checkbox-indicator {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    border: 2px solid #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Animaciones para modales */
+.modal-overlay {
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.modal-content {
+    animation: slideIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Barras de progreso para estadísticas */
+.progress-bar {
+    height: 0.5rem;
+    border-radius: 9999px;
+    transition: width 0.3s ease-in-out;
+}

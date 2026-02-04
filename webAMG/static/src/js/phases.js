@@ -690,10 +690,77 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Beneficiarios seleccionados:', beneficiariesInput.value);
             
             // Permitir envío normal
-            return true;
-        });
+        return true;
+    });
+});
+
+// Funciones para modal de beneficiarios de fase (phase_edit.html)
+function openBeneficiariesModalForPhase() {
+    document.getElementById('beneficiariesModalForPhase').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeBeneficiariesModalForPhase() {
+    document.getElementById('beneficiariesModalForPhase').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+function updateBeneficiariesCountPhase() {
+    const checkboxes = document.querySelectorAll('.beneficiary-item-for-phase input[type="checkbox"]:checked');
+    const count = checkboxes.length;
+    const countElement = document.getElementById('selectedBeneficiariesCountPhase');
+    const badgeElement = document.getElementById('selectedBeneficiariesBadgePhase');
+    
+    countElement.textContent = count;
+    if (count > 0) {
+        badgeElement.textContent = count + ' seleccionados';
+        badgeElement.classList.remove('hidden');
+    } else {
+        badgeElement.classList.add('hidden');
+    }
+}
+
+function confirmBeneficiariesSelectionPhase() {
+    const checkboxes = document.querySelectorAll('.beneficiary-item-for-phase input[type="checkbox"]:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.closest('.beneficiary-item-for-phase').dataset.id);
+    
+    document.getElementById('beneficiariesInputPhase').value = selectedIds.join(',');
+    updateBeneficiariesCountPhase();
+    closeBeneficiariesModalForPhase();
+}
+
+// Búsqueda de beneficiarios
+document.getElementById('beneficiariesSearchPhase')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.beneficiary-item-for-phase');
+    
+    items.forEach(item => {
+        const name = item.dataset.name.toLowerCase();
+        const dpi = item.dataset.dpi.toLowerCase();
+        const community = item.dataset.community.toLowerCase();
+        
+        if (name.includes(searchTerm) || dpi.includes(searchTerm) || community.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+// Cerrar modales al hacer clic fuera
+document.getElementById('beneficiariesModalForPhase').addEventListener('click', function(e) {
+    if (e.target === this) closeBeneficiariesModalForPhase();
+});
+
+// Cerrar modales con Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeBeneficiariesModalForPhase();
     }
 });
+
+// Inicializar contador
+updateBeneficiariesCountPhase();
 
 // =====================================================
 // EVENT LISTENERS - CERRAR MODALES

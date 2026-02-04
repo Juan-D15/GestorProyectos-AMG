@@ -72,7 +72,7 @@
                             class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 z-10 cursor-pointer"
                         >
                             <i id="eyeIcon" class="fas fa-eye text-lg"></i>
-                            <i id="eyeOffIcon" class="fas fa-eye-slash text-lg" style="display: none;"></i>
+                            <i id="eyeOffIcon" class="fas fa-eye-slash text-lg password-eye-hidden"></i>
                         </button>
                         {% if form.password.errors %}
                             <p class="error-message">{{ form.password.errors.0 }}</p>
@@ -104,7 +104,9 @@
 
 {% if logout_message %}
 <script>
-redirectAfterLogout();
+if (typeof redirectAfterLogout === 'function') {
+    redirectAfterLogout();
+}
 </script>
 {% endif %}
 {% endblock %}

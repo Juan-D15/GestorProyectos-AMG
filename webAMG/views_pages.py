@@ -503,30 +503,99 @@ def project_list_page(request):
     Vista para listar todos los proyectos con filtros.
     """
     from webAMG.models import Project
-    
+
     projects = Project.objects.all().order_by('-created_at')
-    
+
     # Filtros
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
-    
+    filter_start_date = request.GET.get('filter_start_date', '')
+    filter_end_date = request.GET.get('filter_end_date', '')
+    filter_department = request.GET.get('filter_department', '')
+    filter_municipality = request.GET.get('filter_municipality', '')
+    filter_year = request.GET.get('filter_year', '')
+
     if search_query:
         projects = projects.filter(
             models.Q(project_name__icontains=search_query) |
             models.Q(project_code__icontains=search_query) |
             models.Q(location__icontains=search_query)
         )
-    
+
     if status_filter:
         projects = projects.filter(status=status_filter)
-    
+
+    # Filtro por rango de fechas
+    if filter_start_date or filter_end_date:
+        from django.db.models import Q
+
+        try:
+            if filter_start_date and filter_end_date:
+                # Filtro por rango completo: proyectos que empiezan o terminan en el rango
+                start_date = datetime.strptime(filter_start_date, '%Y-%m-%d').date()
+                end_date = datetime.strptime(filter_end_date, '%Y-%m-%d').date()
+                projects = projects.filter(
+                    Q(start_date__gte=start_date, start_date__lte=end_date) |
+                    Q(end_date__gte=start_date, end_date__lte=end_date) |
+                    Q(start_date__lte=start_date, end_date__gte=end_date)
+                )
+            elif filter_start_date:
+                # Solo fecha de inicio: proyectos que incluyen o empiezan después de esa fecha
+                start_date = datetime.strptime(filter_start_date, '%Y-%m-%d').date()
+                projects = projects.filter(
+                    Q(start_date__lte=start_date, end_date__gte=start_date) |
+                    Q(start_date__gte=start_date)
+                )
+            elif filter_end_date:
+                # Solo fecha de fin: proyectos que incluyen o terminan antes de esa fecha
+                end_date = datetime.strptime(filter_end_date, '%Y-%m-%d').date()
+                projects = projects.filter(
+                    Q(start_date__lte=end_date, end_date__gte=end_date) |
+                    Q(end_date__lte=end_date)
+                )
+        except ValueError:
+            print('Error al procesar fechas del filtro')
+            pass
+
+    # Filtro por año
+    if filter_year:
+        try:
+            year = int(filter_year)
+            if year > 0 and year <= 2100:
+                projects = projects.filter(start_date__year=year)
+        except ValueError:
+            pass
+
+    # Filtro por departamento
+    if filter_department:
+        projects = projects.filter(department__icontains=filter_department)
+
+    # Filtro por municipio
+    if filter_municipality:
+        projects = projects.filter(municipality__icontains=filter_municipality)
+
+    # Obtener listas únicas de departamentos y municipios
+    departments = Project.objects.values_list('department', flat=True).distinct().exclude(department='').exclude(department=None).order_by('department')
+    municipalities = Project.objects.values_list('municipality', flat=True).distinct().exclude(municipality='').exclude(municipality=None).order_by('municipality')
+
+    # Si hay un departamento seleccionado, filtrar municipios por ese departamento
+    if filter_department:
+        municipalities = Project.objects.filter(department=filter_department).values_list('municipality', flat=True).distinct().exclude(municipality='').exclude(municipality=None).order_by('municipality')
+
     context = {
         'user': request.user,
         'projects': projects,
         'search_query': search_query,
         'status_filter': status_filter,
+        'filter_start_date': filter_start_date,
+        'filter_end_date': filter_end_date,
+        'filter_department': filter_department,
+        'filter_municipality': filter_municipality,
+        'filter_year': filter_year,
+        'departments': departments,
+        'municipalities': municipalities,
     }
-    
+
     return render(request, "dashboard/project_list.html", context)
 
 
@@ -558,8 +627,71 @@ def project_detail_page(request, project_id):
     for b in beneficiaries:
         print(f'  - {b.id}: {b.first_name} {b.last_name}')
 
-    # Obtener las evidencias del proyecto (solo si no tiene fases)
-    evidences = ProjectEvidence.objects.filter(project=project).order_by('-start_date', '-created_at')
+    # Obtener las evidencias del proyecto (solo si no tiene fases) con filtros de fechas
+    evidences = ProjectEvidence.objects.filter(project=project)
+
+    # Aplicar filtros de fechas si se proporcionan
+    filter_start_date = request.GET.get('filter_start_date')
+    filter_end_date = request.GET.get('filter_end_date')
+    filter_year = request.GET.get('filter_year')
+
+    # Lógica de filtrado por rango de fechas
+    # Una evidencia se incluye si su rango de fechas (start_date a end_date) intersecta con el rango del filtro
+    if filter_start_date or filter_end_date:
+        from django.db.models import Q
+
+        try:
+            if filter_start_date and filter_end_date:
+                # Ambas fechas proporcionadas: filtro por rango completo
+                start_date = datetime.strptime(filter_start_date, '%Y-%m-%d').date()
+                end_date = datetime.strptime(filter_end_date, '%Y-%m-%d').date()
+
+                # Una evidencia está en el rango si cumple alguna de estas condiciones:
+                # 1. Empieza en el rango (start_date está entre filtro_start y filtro_end)
+                # 2. Termina en el rango (end_date está entre filtro_start y filtro_end)
+                # 3. Abarca todo el rango (empieza antes y termina después)
+                evidences = evidences.filter(
+                    Q(start_date__gte=start_date, start_date__lte=end_date) |
+                    Q(end_date__gte=start_date, end_date__lte=end_date) |
+                    Q(start_date__lte=start_date, end_date__gte=end_date)
+                )
+                print(f'Filtro: rango de {start_date} a {end_date}')
+
+            elif filter_start_date:
+                # Solo fecha de inicio: evidencias que incluyen esa fecha o empiezan después
+                start_date = datetime.strptime(filter_start_date, '%Y-%m-%d').date()
+                evidences = evidences.filter(
+                    Q(start_date__lte=start_date, end_date__gte=start_date) |
+                    Q(start_date__gte=start_date)
+                )
+                print(f'Filtro: evidencias que incluyen o empiezan después de {start_date}')
+
+            elif filter_end_date:
+                # Solo fecha de fin: evidencias que incluyen esa fecha o terminan antes
+                end_date = datetime.strptime(filter_end_date, '%Y-%m-%d').date()
+                evidences = evidences.filter(
+                    Q(start_date__lte=end_date, end_date__gte=end_date) |
+                    Q(end_date__lte=end_date)
+                )
+                print(f'Filtro: evidencias que incluyen o terminan antes de {end_date}')
+
+        except ValueError:
+            print('Error al procesar fechas del filtro')
+            pass
+
+    if filter_year:
+        try:
+            year = int(filter_year)
+            if year > 0 and year <= 2100:
+                evidences = evidences.filter(start_date__year=year)
+                print(f'Filtro: año {year}')
+            else:
+                print(f'Filtro de año inválido: {year} (debe ser positivo y <= 2100)')
+        except ValueError:
+            print(f'Filtro de año no válido: {filter_year}')
+            pass
+
+    evidences = evidences.order_by('-start_date', '-created_at')
     print(f'Evidencias encontradas: {evidences.count()}')
 
     # Obtener las fases del proyecto
@@ -583,6 +715,9 @@ def project_detail_page(request, project_id):
         'phases': phases,
         'phases_beneficiaries': phases_beneficiaries,
         'all_beneficiaries': all_beneficiaries,
+        'filter_start_date': filter_start_date,
+        'filter_end_date': filter_end_date,
+        'filter_year': filter_year,
     }
 
     return render(request, "dashboard/project_detail.html", context)
@@ -768,14 +903,33 @@ def project_delete_page(request, project_id):
         
         try:
             project_name = project.project_name
-            
+
+            # Eliminar las imágenes de las evidencias de proyecto
+            from webAMG.models import EvidencePhoto
+            for evidence in project.evidences.all():
+                for photo in evidence.photos.all():
+                    file_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        print(f'Foto de evidencia eliminada: {photo.photo_url}')
+
+            # Eliminar las imágenes de las evidencias de fases
+            from webAMG.models import PhaseEvidence, PhaseEvidencePhoto
+            for phase in project.phases.all():
+                for evidence in phase.evidences.all():
+                    for photo in evidence.photos.all():
+                        file_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                            print(f'Foto de evidencia de fase eliminada: {photo.photo_url}')
+
             # Eliminar la imagen de portada si existe
             if project.cover_image_url:
                 image_path = os.path.join(settings.MEDIA_ROOT, project.cover_image_url)
                 if os.path.exists(image_path):
                     os.remove(image_path)
-                    print(f'Imagen eliminada: {image_path}')
-            
+                    print(f'Imagen de portada eliminada: {image_path}')
+
             # Eliminar el proyecto
             project.delete()
             messages.success(request, f'Proyecto "{project_name}" eliminado exitosamente.')
@@ -1133,6 +1287,15 @@ def phase_delete(request, project_id, phase_id):
             return redirect('project_detail', project_id=project_id)
 
         if request.user.check_password(password):
+            # Eliminar las imágenes de las evidencias de la fase
+            from webAMG.models import PhaseEvidence, PhaseEvidencePhoto
+            for evidence in phase.evidences.all():
+                for photo in evidence.photos.all():
+                    file_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        print(f'Foto de evidencia de fase eliminada: {photo.photo_url}')
+
             phase.delete()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': True, 'message': f'Fase "{phase.phase_name}" eliminada exitosamente.'})
@@ -1593,6 +1756,7 @@ def project_evidence_edit(request, project_id, evidence_id):
     context = {
         'project': project,
         'evidence': evidence,
+        'project_beneficiaries': project.beneficiaries.filter(is_active=True).order_by('first_name', 'last_name'),
     }
     return render(request, 'dashboard/evidence_edit.html', context)
 
@@ -1602,15 +1766,26 @@ def project_evidence_delete(request, project_id, evidence_id):
     """
     Vista para eliminar una evidencia de proyecto.
     """
+    import os
     from django.http import JsonResponse
-    from webAMG.models import Project, ProjectEvidence
-    
+    from django.conf import settings
+    from webAMG.models import Project, ProjectEvidence, EvidencePhoto
+
     project = get_object_or_404(Project, id=project_id)
     evidence = get_object_or_404(ProjectEvidence, id=evidence_id, project=project)
-    
+
     if request.method == 'POST':
         password = request.POST.get('password')
         if request.user.check_password(password):
+            # Eliminar los archivos físicos de todas las fotos de la evidencia
+            photos = EvidencePhoto.objects.filter(evidence=evidence)
+            for photo in photos:
+                file_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    print(f"DEBUG: Archivo eliminado: {photo.photo_url}")
+
+            # Eliminar la evidencia (esto también eliminará los registros de fotos y beneficiarios en cascada)
             evidence.delete()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': True, 'message': 'Evidencia eliminada exitosamente.'})
@@ -1620,7 +1795,7 @@ def project_evidence_delete(request, project_id, evidence_id):
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'message': 'Contraseña incorrecta.'}, status=400)
             messages.error(request, 'Contraseña incorrecta.')
-    
+
     context = {
         'project': project,
         'evidence': evidence,

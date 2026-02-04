@@ -3,6 +3,127 @@
 // Variable global para almacenar las fotos seleccionadas
 let selectedPhotos = [];
 
+// Función para abrir el modal de selección de beneficiarios
+function openBeneficiariesModal() {
+    console.log('=== Abriendo modal de selección de beneficiarios para evidencia ===');
+    
+    const modal = document.getElementById('beneficiariesModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+
+        // Obtener los IDs de beneficiarios ya seleccionados
+        const beneficiariesInput = document.getElementById('evidenceBeneficiariesInput');
+        const existingBeneficiaries = beneficiariesInput.value ? beneficiariesInput.value.split(',').map(id => id.trim()).filter(id => id !== '') : [];
+        selectedBeneficiaryIds = [...existingBeneficiaries];
+
+        console.log('Beneficiarios ya seleccionados:', existingBeneficiaries);
+
+        // Marcar los checkboxes según los beneficiarios seleccionados
+        const items = document.querySelectorAll('.beneficiary-item');
+        items.forEach(function(item) {
+            const id = item.dataset.id;
+            const checkbox = item.querySelector('input[type="checkbox"]');
+
+            if (checkbox) {
+                checkbox.checked = selectedBeneficiaryIds.includes(id);
+            }
+        });
+
+        updateSelectedBeneficiariesCount();
+    }
+}
+
+// Función para cerrar el modal de selección de beneficiarios
+function closeBeneficiariesModal() {
+    console.log('Cerrando modal de selección de beneficiarios para evidencia');
+    const modal = document.getElementById('beneficiariesModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// Función para actualizar el contador de beneficiarios seleccionados
+function updateSelectedBeneficiariesCount() {
+    const checkboxes = document.querySelectorAll('.beneficiary-item input[type="checkbox"]:checked');
+    const count = checkboxes.length;
+    const countElement = document.getElementById('selectedBeneficiariesCount');
+    const badgeElement = document.getElementById('selectedBeneficiariesBadge');
+
+    if (countElement) {
+        countElement.textContent = count;
+    }
+
+    if (badgeElement) {
+        if (count > 0) {
+            badgeElement.textContent = count + ' seleccionados';
+            badgeElement.classList.remove('hidden');
+        } else {
+            badgeElement.classList.add('hidden');
+        }
+    }
+}
+
+// Función para confirmar la selección de beneficiarios
+function confirmBeneficiariesSelection() {
+    console.log('=== Confirmando selección de beneficiarios para evidencia ===');
+
+    const checkboxes = document.querySelectorAll('.beneficiary-item input[type="checkbox"]:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.closest('.beneficiary-item').dataset.id);
+
+    console.log('Beneficiarios seleccionados:', selectedIds);
+
+    // Actualizar el input oculto con los IDs seleccionados
+    const beneficiariesInput = document.getElementById('evidenceBeneficiariesInput');
+    if (beneficiariesInput) {
+        beneficiariesInput.value = selectedIds.join(',');
+    }
+
+    // Actualizar el badge en el botón
+    const badgeElement = document.getElementById('selectedBeneficiariesBadge');
+    if (badgeElement) {
+        if (selectedIds.length > 0) {
+            badgeElement.textContent = selectedIds.length + ' seleccionados';
+            badgeElement.classList.remove('hidden');
+        } else {
+            badgeElement.classList.add('hidden');
+        }
+    }
+
+    updateSelectedBeneficiariesCount();
+    closeBeneficiariesModal();
+}
+
+// Función para filtrar beneficiarios (usa el input correcto según el contexto)
+function filterBeneficiaries() {
+    const searchInputProject = document.getElementById('beneficiarySearchInput');
+    const searchInputPhase = document.getElementById('phaseEvidenceBeneficiariesSearch');
+    
+    if (searchInputProject) {
+        filterBeneficiariesInList(searchInputProject, '.beneficiary-item');
+    } else if (searchInputPhase) {
+        filterBeneficiariesInList(searchInputPhase, '.phase-evidence-beneficiary-item');
+    }
+}
+
+function filterBeneficiariesInList(searchInput, itemSelector) {
+    const searchTerm = searchInput.value.toLowerCase();
+    const items = document.querySelectorAll(itemSelector);
+
+    items.forEach(item => {
+        const name = item.dataset.name ? item.dataset.name.toLowerCase() : '';
+        const dpi = item.dataset.dpi ? item.dataset.dpi.toLowerCase() : '';
+        const community = item.dataset.community ? item.dataset.community.toLowerCase() : '';
+
+        if (name.includes(searchTerm) || dpi.includes(searchTerm) || community.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
 function openEvidenceModal() {
     console.log('=== Abriendo modal para CREAR nueva evidencia ===');
     
@@ -880,4 +1001,159 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`  - Columnas: ${columns}`);
         console.log(`  - Botones navegación: ${navButtons.length > 0 ? 'mostrados' : 'ocultos'}`);
     });
+});
+
+// Logs de depuración para el formulario de edición de evidencia
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== Página de edición de evidencia cargada ===');
+    
+    const form = document.querySelector('form[action*="evidencias"][action*="editar"]');
+    if (form) {
+        console.log('Formulario encontrado:', form);
+        console.log('Form ID:', form.id);
+        
+        // Monitorear cambios en el input de archivos
+        const newPhotosInput = document.getElementById('newPhotosInput');
+        if (newPhotosInput) {
+            newPhotosInput.addEventListener('change', function() {
+                console.log('=== Cambio en input de fotos ===');
+                console.log('Archivos seleccionados:', this.files.length);
+                Array.from(this.files).forEach((file, index) => {
+                    console.log(`  ${index + 1}. ${file.name} (${file.size} bytes, ${file.type})`);
+                });
+            });
+        }
+        
+        form.addEventListener('submit', function(e) {
+            console.log('=== SUBMIT DEL FORMULARIO DE EDICIÓN ===');
+            console.log('Form action:', form.action);
+            console.log('Form method:', form.method);
+            console.log('Form enctype:', form.enctype);
+            
+            // Verificar fotos a eliminar
+            const photosToDelete = form.querySelectorAll('input[name="photos_to_delete"]');
+            console.log('Fotos marcadas para eliminar (photos_to_delete):', photosToDelete.length);
+            photosToDelete.forEach(input => {
+                console.log(`  - Foto ID: ${input.value}, checked: ${input.checked}`);
+            });
+            
+            // Verificar nuevas fotos
+            const newPhotosInput = document.getElementById('newPhotosInput');
+            console.log('Input de nuevas fotos encontrado:', !!newPhotosInput);
+            if (newPhotosInput) {
+                console.log('Nuevas fotos seleccionadas:', newPhotosInput.files.length);
+                Array.from(newPhotosInput.files).forEach((file, index) => {
+                    console.log(`  ${index + 1}. ${file.name} (${file.size} bytes, ${file.type})`);
+                });
+            }
+            
+            // Verificar beneficiarios
+            const beneficiariesInputs = form.querySelectorAll('input[name="beneficiaries"]');
+            console.log('Beneficiarios seleccionados:', beneficiariesInputs.length);
+            beneficiariesInputs.forEach(input => {
+                console.log(`  - Beneficiario ID: ${input.value}, checked: ${input.checked}`);
+            });
+            
+            // Listar todos los inputs del formulario
+            const allInputs = form.querySelectorAll('input');
+            console.log('Total de inputs en el formulario:', allInputs.length);
+            allInputs.forEach(input => {
+                if (input.type !== 'submit' && input.type !== 'button') {
+                    console.log(`  - type="${input.type}", name="${input.name}", value="${input.value}"`);
+                }
+            });
+        });
+    } else {
+        console.log('ERROR: Formulario de edición no encontrado');
+    }
+});
+
+function previewNewPhotos(input) {
+    const previewContainer = document.getElementById('newPhotosPreview');
+    previewContainer.innerHTML = '';
+    
+    if (input.files.length > 0) {
+        previewContainer.classList.remove('hidden');
+        console.log('=== Previsualizando fotos ===');
+        console.log('Cantidad de fotos:', input.files.length);
+        Array.from(input.files).forEach((file, index) => {
+            console.log(`  Foto ${index + 1}: ${file.name} (${file.size} bytes)`);
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.createElement('div');
+                preview.className = 'relative';
+                
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.alt = 'Previsualización';
+                img.className = 'w-full h-24 object-cover rounded-lg border border-gray-200';
+                
+                const label = document.createElement('label');
+                label.htmlFor = `photo_delete_${index}`;
+                label.className = 'absolute -top-2 -right-2 cursor-pointer w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity';
+                label.innerHTML = '<i class="fas fa-times text-xs"></i>';
+                
+                preview.appendChild(img);
+                preview.appendChild(label);
+                previewContainer.appendChild(preview);
+            };
+             reader.readAsDataURL(file);
+        });
+    }
+}
+
+// Event listener para el input de búsqueda de beneficiarios (modal de proyectos)
+document.getElementById('beneficiarySearchInput')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.beneficiary-item');
+
+    items.forEach(item => {
+        const name = item.dataset.name ? item.dataset.name.toLowerCase() : '';
+        const dpi = item.dataset.dpi ? item.dataset.dpi.toLowerCase() : '';
+        const community = item.dataset.community ? item.dataset.community.toLowerCase() : '';
+
+        if (name.includes(searchTerm) || dpi.includes(searchTerm) || community.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+// Event listener para el input de búsqueda de beneficiarios (modal de fases)
+document.getElementById('phaseEvidenceBeneficiariesSearch')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.phase-evidence-beneficiary-item');
+
+    items.forEach(item => {
+        const name = item.dataset.name ? item.dataset.name.toLowerCase() : '';
+        const dpi = item.dataset.dpi ? item.dataset.dpi.toLowerCase() : '';
+        const community = item.dataset.community ? item.dataset.community.toLowerCase() : '';
+
+        if (name.includes(searchTerm) || dpi.includes(searchTerm) || community.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+// Event listeners para cerrar modales al hacer clic fuera
+document.getElementById('beneficiariesModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeBeneficiariesModal();
+});
+
+document.getElementById('phaseEvidenceBeneficiariesModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closePhaseEvidenceBeneficiariesModal();
+});
+
+// Cerrar modales con Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeEvidenceModal();
+        closePhotoModal();
+        closeDeleteEvidenceModal();
+        closeBeneficiariesModal();
+        closePhaseEvidenceBeneficiariesModal();
+    }
 });
