@@ -1345,6 +1345,10 @@ def phase_detail(request, project_id, phase_id):
     # Obtener evidencias de la fase
     evidences = PhaseEvidence.objects.filter(phase=phase).order_by('-start_date', '-created_at')
 
+    # Obtener años únicos de las evidencias para el filtro
+    evidence_years = list(set(evidence.start_date.year for evidence in evidences))
+    evidence_years.sort(reverse=True)
+
     # Obtener todos los beneficiarios disponibles
     all_beneficiaries = Beneficiary.objects.filter(is_active=True).order_by('first_name', 'last_name')
 
@@ -1354,6 +1358,7 @@ def phase_detail(request, project_id, phase_id):
         'phase_beneficiaries': [pb.beneficiary for pb in phase_beneficiaries],
         'evidences': evidences,
         'all_beneficiaries': all_beneficiaries,
+        'evidence_years': evidence_years,
     }
 
     return render(request, 'dashboard/phase_detail.html', context)

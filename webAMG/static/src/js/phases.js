@@ -1932,3 +1932,123 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, 200);
 });
+
+// =====================================================
+// FUNCIONES PARA FILTRAR EVIDENCIAS DE FASE
+// =====================================================
+
+// Event listener para limpiar caracteres no numéricos en el campo de año
+document.addEventListener('DOMContentLoaded', function() {
+    const yearInput = document.getElementById('evidenceFilterYear');
+    if (yearInput) {
+        yearInput.addEventListener('input', function(e) {
+            // Solo permitir números
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    }
+});
+
+function applyEvidenceFilters() {
+    console.log('=== Aplicando filtros de evidencias ===');
+
+    const filterYear = document.getElementById('evidenceFilterYear');
+    const filterStartDate = document.getElementById('evidenceFilterStartDate');
+    const filterEndDate = document.getElementById('evidenceFilterEndDate');
+
+    if (!filterYear && !filterStartDate && !filterEndDate) {
+        console.log('No hay filtros aplicados');
+        return;
+    }
+
+    const year = filterYear ? filterYear.value : '';
+    const startDate = filterStartDate ? filterStartDate.value : '';
+    const endDate = filterEndDate ? filterEndDate.value : '';
+
+    console.log('Filtros aplicados:', { year, startDate, endDate });
+
+    const evidenceCards = document.querySelectorAll('.evidence-card');
+    let visibleCount = 0;
+    let totalCount = 0;
+
+    evidenceCards.forEach(card => {
+        totalCount++;
+
+        const cardStartDate = card.dataset.startDate;
+        const cardEndDate = card.dataset.endDate;
+        const cardStartYear = card.dataset.startYear;
+        const cardEndYear = card.dataset.endYear;
+
+        let isVisible = true;
+
+        if (year && isVisible) {
+            if (cardStartYear !== year && cardEndYear !== year) {
+                isVisible = false;
+            }
+        }
+
+        if (isVisible && startDate) {
+            if (cardEndDate < startDate) {
+                isVisible = false;
+            }
+        }
+
+        if (isVisible && endDate) {
+            if (cardStartDate > endDate) {
+                isVisible = false;
+            }
+        }
+
+        if (isVisible) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    console.log(`Evidencias visibles: ${visibleCount} de ${totalCount}`);
+
+    const evidencesList = document.getElementById('evidencesList');
+    const noResultsMsg = document.getElementById('evidenceNoResults');
+
+    if (visibleCount === 0) {
+        if (!noResultsMsg) {
+            const messageDiv = document.createElement('div');
+            messageDiv.id = 'evidenceNoResults';
+            messageDiv.className = 'text-center py-8';
+            messageDiv.innerHTML = `
+                <i class="fas fa-search text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">No se encontraron evidencias con los filtros seleccionados.</p>
+            `;
+            evidencesList.appendChild(messageDiv);
+        }
+    } else {
+        if (noResultsMsg) {
+            noResultsMsg.remove();
+        }
+    }
+}
+
+function clearEvidenceFilters() {
+    console.log('=== Limpiando filtros de evidencias ===');
+
+    const filterYear = document.getElementById('evidenceFilterYear');
+    const filterStartDate = document.getElementById('evidenceFilterStartDate');
+    const filterEndDate = document.getElementById('evidenceFilterEndDate');
+
+    if (filterYear) filterYear.value = '';
+    if (filterStartDate) filterStartDate.value = '';
+    if (filterEndDate) filterEndDate.value = '';
+
+    const evidenceCards = document.querySelectorAll('.evidence-card');
+    evidenceCards.forEach(card => {
+        card.style.display = 'block';
+    });
+
+    const noResultsMsg = document.getElementById('evidenceNoResults');
+    if (noResultsMsg) {
+        noResultsMsg.remove();
+    }
+
+    console.log('Filtros limpiados');
+}
