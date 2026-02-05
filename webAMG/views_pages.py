@@ -1713,36 +1713,49 @@ def phase_evidence_delete(request, project_id, phase_id, evidence_id):
     evidence = get_object_or_404(PhaseEvidence, id=evidence_id, phase=phase)
 
     if request.method == 'POST':
-        try:
-            import os
-            from django.conf import settings
+        password = request.POST.get('password')
 
-            # Eliminar fotos físicas
-            for photo in evidence.photos.all():
-                file_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-
-            evidence.delete()
-
-            # Actualizar el updated_at de la fase
-            phase.updated_at = timezone.now()
-            phase.save(update_fields=['updated_at'])
-
-            # Respuesta AJAX o redirección normal
+        if not password:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Evidencia eliminada exitosamente.'
-                })
-
-            messages.success(request, 'Evidencia eliminada exitosamente.')
+                return JsonResponse({'success': False, 'message': 'Debe ingresar su contraseña para confirmar la eliminación.'}, status=400)
+            messages.error(request, 'Debe ingresar su contraseña para confirmar la eliminación.')
             return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
-        except Exception as e:
+        if request.user.check_password(password):
+            try:
+                import os
+                from django.conf import settings
+
+                # Eliminar fotos físicas
+                for photo in evidence.photos.all():
+                    file_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+
+                evidence.delete()
+
+                # Actualizar el updated_at de la fase
+                phase.updated_at = timezone.now()
+                phase.save(update_fields=['updated_at'])
+
+                # Respuesta AJAX o redirección normal
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Evidencia eliminada exitosamente.'
+                    })
+
+                messages.success(request, 'Evidencia eliminada exitosamente.')
+                return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
+
+            except Exception as e:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'message': f'Error al eliminar la evidencia: {str(e)}'}, status=500)
+                messages.error(request, f'Error al eliminar la evidencia: {str(e)}')
+        else:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'message': f'Error al eliminar la evidencia: {str(e)}'}, status=500)
-            messages.error(request, f'Error al eliminar la evidencia: {str(e)}')
+                return JsonResponse({'success': False, 'message': 'Contraseña incorrecta.'}, status=400)
+            messages.error(request, 'Contraseña incorrecta.')
 
     return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 

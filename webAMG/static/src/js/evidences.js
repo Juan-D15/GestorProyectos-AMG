@@ -318,8 +318,8 @@ function openEvidenceDetailsModal(button) {
     console.log(`Abriendo modal de detalles para evidencia ${evidenceId}`);
     
     // Llenar los datos básicos
-    document.getElementById('evidenceDetailStartDate').textContent = startDate;
-    document.getElementById('evidenceDetailEndDate').textContent = endDate;
+    document.getElementById('evidenceDetailStartDate').textContent = formatEvidenceDate(startDate);
+    document.getElementById('evidenceDetailEndDate').textContent = formatEvidenceDate(endDate);
     document.getElementById('evidenceDetailDescription').textContent = description;
     
     // Limpiar contenedores
