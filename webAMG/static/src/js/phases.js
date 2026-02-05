@@ -302,21 +302,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const editPhaseEvidenceForm = document.getElementById('editPhaseEvidenceForm');
     if (editPhaseEvidenceForm) {
         editPhaseEvidenceForm.addEventListener('submit', function(e) {
+            console.log('=== Formulario de edición enviado ===');
             e.preventDefault();
             e.stopPropagation();
 
-            const formData = new FormData(this);
+            // Verificar fotos marcadas para eliminar
+            const photosToDelete = this.querySelectorAll('input[name="photos_to_delete"]:checked');
+            console.log('Fotos marcadas para eliminar:', photosToDelete.length);
+            photosToDelete.forEach((checkbox, index) => {
+                console.log(`  - Foto ${index + 1}: ID ${checkbox.value}`);
+            });
+
+            // Crear FormData manualmente para agregar las fotos nuevas
+            const formDataToSend = new FormData(this);
+
+            // Agregar fotos nuevas del array al FormData
+            if (selectedEditPhasePhotos.length > 0) {
+                console.log(`Agregando ${selectedEditPhasePhotos.length} fotos nuevas al FormData:`);
+                selectedEditPhasePhotos.forEach((file, index) => {
+                    console.log(`  ${index + 1}. ${file.name} (${file.size} bytes)`);
+                    // Agregar la foto con el nombre 'photos' como lo espera Django
+                    formDataToSend.append('photos', file);
+                });
+                console.log('Fotos nuevas agregadas al FormData');
+            } else {
+                console.log('No hay fotos nuevas para enviar');
+            }
+
             const actionUrl = this.action;
 
             console.log('Enviando formulario de edición de evidencia de fase a:', actionUrl);
-            console.log('FormData - photos_to_delete:', formData.getAll('photos_to_delete'));
+            console.log('FormData - photos_to_delete:', formDataToSend.getAll('photos_to_delete'));
 
             fetch(actionUrl, {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: formData
+                body: formDataToSend
             })
             .then(response => response.json())
             .then(data => {
@@ -1099,65 +1122,7 @@ document.getElementById('phaseEvidenceBeneficiariesSearch')?.addEventListener('i
     });
 });
 
-// Event listener para el formulario de edición de evidencia
-document.addEventListener('DOMContentLoaded', function() {
-    const editEvidenceForm = document.getElementById('editPhaseEvidenceForm');
-    if (editEvidenceForm) {
-        editEvidenceForm.addEventListener('submit', function(e) {
-            console.log('Formulario de edición enviado');
-            console.log('Action:', this.action);
-            console.log('Method:', this.method);
-
-            // Verificar fotos marcadas para eliminar
-            const photosToDelete = this.querySelectorAll('input[name="photos_to_delete"]:checked');
-            console.log('Fotos marcadas para eliminar:', photosToDelete.length);
-            photosToDelete.forEach((checkbox, index) => {
-                console.log(`  - Foto ${index + 1}: ID ${checkbox.value}`);
-            });
-
-            // Verificar nuevas fotos
-            const newPhotos = this.querySelector('#editPhaseEvidencePhotosInput');
-
-            // Si hay fotos nuevas en el array, agregarlas al input antes de enviar
-            if (selectedEditPhasePhotos.length > 0 && newPhotos) {
-                console.log(`Agregando ${selectedEditPhasePhotos.length} fotos nuevas al input antes de enviar:`);
-                selectedEditPhasePhotos.forEach((file, index) => {
-                    console.log(`  ${index + 1}. ${file.name} (${file.size} bytes)`);
-                });
-
-                // Crear un nuevo FileList con todas las fotos seleccionadas
-                const dt = new DataTransfer();
-                selectedEditPhasePhotos.forEach(function(file) {
-                    dt.items.add(file);
-                });
-                newPhotos.files = dt.files;
-                console.log(`Fotos en el input después de asignar: ${newPhotos.files.length}`);
-            } else {
-                console.log('No hay fotos nuevas para enviar');
-            }
-
-             // Verificar beneficiarios
-             const beneficiariesInput = this.querySelector('#editPhaseEvidenceBeneficiariesInput');
-             console.log('Beneficiarios seleccionados (edición):', beneficiariesInput ? beneficiariesInput.value : 'No encontrado');
-             console.log('Tipo de valor:', beneficiariesInput ? typeof beneficiariesInput.value : 'N/A');
-             console.log('Longitud del valor:', beneficiariesInput ? beneficiariesInput.value.length : 'N/A');
-             
-             // Imprimir todos los datos del formulario
-             const formData = new FormData(this);
-             console.log('=== Datos del FormData (edición) ===');
-             for (let [key, value] of formData.entries()) {
-                 console.log(`  ${key}: ${value}`);
-             }
-             console.log('=== Fin del FormData (edición) ===');
- 
-             // Limpiar el array de fotos nuevas al enviar exitosamente
-             selectedEditPhasePhotos = [];
-
-            // Permitir envío normal
-        });
-    }
-
-    // Event listener para el formulario de creación de evidencia
+// Event listener para el formulario de creación de evidencia
     const createEvidenceForm = document.getElementById('phaseEvidenceForm');
     if (createEvidenceForm) {
         createEvidenceForm.addEventListener('submit', function(e) {
@@ -1239,7 +1204,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return false;
         });
     }
-});
 
 // Función para abrir el modal para crear evidencia de fase
 function openPhaseEvidenceModal() {
