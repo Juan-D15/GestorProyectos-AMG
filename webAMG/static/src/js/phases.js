@@ -707,8 +707,28 @@ document.addEventListener('DOMContentLoaded', function() {
 function updatePhaseEvidenceBeneficiariesCount() {
     const checkboxes = document.querySelectorAll('.phase-evidence-beneficiary-item input[type="checkbox"]:checked');
     const count = checkboxes.length;
-    const countElement = document.getElementById('selectedPhaseEvidenceBeneficiariesCount');
-    const badgeElement = document.getElementById('selectedPhaseEvidenceBeneficiariesBadge');
+
+    // Actualizar contador en el modal de selección
+    const modalCountElement = document.getElementById('phaseEvidenceBeneficiariesModalCount');
+    if (modalCountElement) {
+        modalCountElement.textContent = count;
+    }
+
+    // Detectar si estamos en modo edición o creación
+    const editModal = document.getElementById('editPhaseEvidenceModal');
+    const createModal = document.getElementById('phaseEvidenceModal');
+    const isEditMode = editModal && !editModal.classList.contains('hidden');
+    const isCreateMode = createModal && !createModal.classList.contains('hidden');
+
+    let countElement, badgeElement;
+
+    if (isEditMode) {
+        countElement = document.getElementById('editPhaseEvidenceBeneficiariesCount');
+        badgeElement = document.getElementById('editPhaseEvidenceBeneficiariesBadge');
+    } else if (isCreateMode) {
+        countElement = document.getElementById('createPhaseEvidenceBeneficiariesCount');
+        badgeElement = document.getElementById('createPhaseEvidenceBeneficiariesBadge');
+    }
 
     if (countElement) {
         countElement.textContent = count;
@@ -725,17 +745,17 @@ function updatePhaseEvidenceBeneficiariesCount() {
 
 function confirmPhaseEvidenceBeneficiariesSelection() {
     const checkboxes = document.querySelectorAll('.phase-evidence-beneficiary-item input[type="checkbox"]:checked');
-    
+
     console.log('=== Confirmando selección de beneficiarios ===');
     console.log('Checkboxes seleccionados:', checkboxes.length);
     console.log('Checkboxes encontrados:', document.querySelectorAll('.phase-evidence-beneficiary-item input[type="checkbox"]').length);
-    
+
     // Usar el valor del checkbox directamente
     const selectedIds = Array.from(checkboxes).map(cb => {
         console.log(`  Checkbox seleccionado - value: ${cb.value}, type: ${typeof cb.value}`);
         return cb.value;
     });
-    
+
     console.log('IDs seleccionados (del value):', selectedIds);
     console.log('Tipo de datos:', selectedIds.map(id => typeof id));
 
@@ -749,12 +769,17 @@ function confirmPhaseEvidenceBeneficiariesSelection() {
     console.log('Modo creación:', isCreateMode);
 
     // Seleccionar el input correcto según el modo
-    let beneficiariesInput;
+    let beneficiariesInput, badgeElement, countElement;
+
     if (isEditMode) {
         beneficiariesInput = document.getElementById('editPhaseEvidenceBeneficiariesInput');
+        badgeElement = document.getElementById('editPhaseEvidenceBeneficiariesBadge');
+        countElement = document.getElementById('editPhaseEvidenceBeneficiariesCount');
         console.log('Guardando en input de EDICIÓN');
     } else if (isCreateMode) {
         beneficiariesInput = document.getElementById('createPhaseEvidenceBeneficiariesInput');
+        badgeElement = document.getElementById('createPhaseEvidenceBeneficiariesBadge');
+        countElement = document.getElementById('createPhaseEvidenceBeneficiariesCount');
         console.log('Guardando en input de CREACIÓN');
     } else {
         console.error('No se pudo determinar el modo (ni edición ni creación)');
@@ -771,10 +796,22 @@ function confirmPhaseEvidenceBeneficiariesSelection() {
         console.error('No se encontró el input de beneficiarios');
     }
 
-    // Solo actualizar el badge, no la lista visual
-    updatePhaseEvidenceBeneficiariesCount();
+    // Actualizar el badge
+    if (badgeElement) {
+        if (selectedIds.length > 0) {
+            badgeElement.textContent = selectedIds.length + ' seleccionados';
+            badgeElement.classList.remove('hidden');
+        } else {
+            badgeElement.classList.add('hidden');
+        }
+    }
+
+    if (countElement) {
+        countElement.textContent = selectedIds.length;
+    }
+
     closePhaseEvidenceBeneficiariesModal();
-    
+
     // Verificar que el valor se guardó
     if (beneficiariesInput) {
         setTimeout(() => {
@@ -784,7 +821,7 @@ function confirmPhaseEvidenceBeneficiariesSelection() {
             console.log('=== Fin de verificación ===');
         }, 100);
     }
-    
+
     console.log('=== Fin de confirmación de beneficiarios ===');
 }
 
@@ -1257,22 +1294,22 @@ function openPhaseEvidenceModal() {
     }
 
     // Limpiar lista de beneficiarios seleccionados
-    const selectedBeneficiariesContainer = document.getElementById('selectedPhaseEvidenceBeneficiariesContainer');
+    const selectedBeneficiariesContainer = document.getElementById('createPhaseEvidenceBeneficiariesContainer');
     if (selectedBeneficiariesContainer) {
         selectedBeneficiariesContainer.classList.add('hidden');
     }
 
-    const selectedBeneficiariesList = document.getElementById('selectedPhaseEvidenceBeneficiariesList');
+    const selectedBeneficiariesList = document.getElementById('createPhaseEvidenceBeneficiariesList');
     if (selectedBeneficiariesList) {
         selectedBeneficiariesList.innerHTML = '<p class="text-sm text-gray-500">No hay beneficiarios seleccionados</p>';
     }
 
-    const selectedBeneficiariesBadge = document.getElementById('selectedPhaseEvidenceBeneficiariesBadge');
+    const selectedBeneficiariesBadge = document.getElementById('createPhaseEvidenceBeneficiariesBadge');
     if (selectedBeneficiariesBadge) {
         selectedBeneficiariesBadge.classList.add('hidden');
     }
 
-    const selectedBeneficiariesCount = document.getElementById('selectedPhaseEvidenceBeneficiariesCount');
+    const selectedBeneficiariesCount = document.getElementById('createPhaseEvidenceBeneficiariesCount');
     if (selectedBeneficiariesCount) {
         selectedBeneficiariesCount.textContent = '0';
     }
@@ -1426,7 +1463,7 @@ function closePhaseEditEvidenceModal() {
     }
 
     // Limpiar badge de beneficiarios
-    const badgeElement = document.getElementById('selectedPhaseEvidenceBeneficiariesBadge');
+    const badgeElement = document.getElementById('editPhaseEvidenceBeneficiariesBadge');
     if (badgeElement) {
         badgeElement.classList.add('hidden');
     }
@@ -1555,9 +1592,9 @@ function loadPhaseEvidenceBeneficiaries(evidenceId) {
                 console.log('Valor del input:', beneficiariesInput.value);
                 console.log('Longitud de ids:', ids.length);
 
-                // Actualizar el badge
-                const badgeElement = document.getElementById('selectedPhaseEvidenceBeneficiariesBadge');
-                const countElement = document.getElementById('selectedPhaseEvidenceBeneficiariesCount');
+                // Actualizar el badge (usar IDs de edición)
+                const badgeElement = document.getElementById('editPhaseEvidenceBeneficiariesBadge');
+                const countElement = document.getElementById('editPhaseEvidenceBeneficiariesCount');
 
                 if (badgeElement) {
                     if (ids.length > 0) {

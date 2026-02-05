@@ -295,7 +295,7 @@
                                 <i class="fas fa-users text-gray-400 mr-3"></i>
                                 <span class="text-sm text-gray-700">Seleccionar beneficiarios...</span>
                             </div>
-                            <span id="selectedPhaseEvidenceBeneficiariesBadge" class="text-xs bg-[#8a4534] text-white px-2 py-1 rounded-full hidden">0 seleccionados</span>
+                            <span id="createPhaseEvidenceBeneficiariesBadge" class="text-xs bg-[#8a4534] text-white px-2 py-1 rounded-full hidden">0 seleccionados</span>
                         </div>
                     </button>
                     <input type="hidden" name="beneficiaries" id="createPhaseEvidenceBeneficiariesInput" value="">
@@ -303,9 +303,9 @@
             </div>
 
             <!-- Lista de beneficiarios seleccionados -->
-            <div id="selectedPhaseEvidenceBeneficiariesContainer" class="bg-gray-50 rounded-xl border border-gray-200 p-4 mt-3 mb-6 hidden">
-                <h4 class="text-sm font-semibold text-gray-700 mb-3">Beneficiarios seleccionados (<span id="selectedPhaseEvidenceBeneficiariesCount">0</span>)</h4>
-                <div id="selectedPhaseEvidenceBeneficiariesList" class="space-y-2">
+            <div id="createPhaseEvidenceBeneficiariesContainer" class="bg-gray-50 rounded-xl border border-gray-200 p-4 mt-3 mb-6 hidden">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">Beneficiarios seleccionados (<span id="createPhaseEvidenceBeneficiariesCount">0</span>)</h4>
+                <div id="createPhaseEvidenceBeneficiariesList" class="space-y-2">
                     <p class="text-sm text-gray-500">No hay beneficiarios seleccionados</p>
                 </div>
             </div>
@@ -356,7 +356,6 @@
         <form id="editPhaseEvidenceForm" method="post" enctype="multipart/form-data" class="p-6 space-y-6">
             {% csrf_token %}
             <input type="hidden" name="evidence_id" id="editEvidenceId" value="">
-            <input type="hidden" name="beneficiaries" id="editPhaseEvidenceBeneficiariesInput" value="">
 
             <!-- Fechas -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -386,7 +385,7 @@
                                 <i class="fas fa-users text-gray-400 mr-3"></i>
                                 <span class="text-sm text-gray-700">Seleccionar beneficiarios...</span>
                             </div>
-                            <span id="selectedPhaseEvidenceBeneficiariesBadge" class="text-xs bg-[#8a4534] text-white px-2 py-1 rounded-full hidden">0 seleccionados</span>
+                            <span id="editPhaseEvidenceBeneficiariesBadge" class="text-xs bg-[#8a4534] text-white px-2 py-1 rounded-full hidden">0 seleccionados</span>
                         </div>
                     </button>
                     <input type="hidden" name="beneficiaries" id="editPhaseEvidenceBeneficiariesInput" value="">
@@ -394,9 +393,9 @@
             </div>
 
             <!-- Lista de beneficiarios seleccionados -->
-            <div id="selectedPhaseEvidenceBeneficiariesContainer" class="bg-gray-50 rounded-xl border border-gray-200 p-4 mt-3 mb-6 hidden">
-                <h4 class="text-sm font-semibold text-gray-700 mb-3">Beneficiarios seleccionados (<span id="selectedPhaseEvidenceBeneficiariesCount">0</span>)</h4>
-                <div id="selectedPhaseEvidenceBeneficiariesList" class="space-y-2">
+            <div id="editPhaseEvidenceBeneficiariesContainer" class="bg-gray-50 rounded-xl border border-gray-200 p-4 mt-3 mb-6 hidden">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">Beneficiarios seleccionados (<span id="editPhaseEvidenceBeneficiariesCount">0</span>)</h4>
+                <div id="editPhaseEvidenceBeneficiariesList" class="space-y-2">
                     <p class="text-sm text-gray-500">No hay beneficiarios seleccionados</p>
                 </div>
             </div>
@@ -470,18 +469,18 @@
                 <p class="text-sm text-gray-500 mb-1">Descripción</p>
                 <p class="font-medium text-gray-900" id="evidenceDetailDescription"></p>
             </div>
-            
-            <!-- Fotos de la evidencia -->
-            <div id="evidenceDetailPhotosSection" class="hidden">
-                <h4 class="text-sm font-medium text-gray-700 mb-3">Fotos</h4>
-                <div id="evidenceDetailPhotos" class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                </div>
-            </div>
-            
+
             <!-- Beneficiarios de la evidencia -->
             <div id="evidenceDetailBeneficiariesSection" class="hidden">
                 <h4 class="text-sm font-medium text-gray-700 mb-3">Beneficiarios participantes</h4>
                 <div id="evidenceDetailBeneficiaries" class="space-y-2">
+                </div>
+            </div>
+
+            <!-- Fotos de la evidencia -->
+            <div id="evidenceDetailPhotosSection" class="hidden">
+                <h4 class="text-sm font-medium text-gray-700 mb-3">Fotos</h4>
+                <div id="evidenceDetailPhotos" class="grid grid-cols-2 md:grid-cols-3 gap-3">
                 </div>
             </div>
         </div>
@@ -550,7 +549,7 @@
         </div>
         <div class="p-6 border-t border-gray-100">
             <div class="flex items-center justify-between mb-4">
-                <span class="text-sm text-gray-600">Beneficiarios seleccionados: <span id="selectedPhaseEvidenceBeneficiariesCount" class="font-semibold text-[#8a4534]">0</span></span>
+                <span class="text-sm text-gray-600">Beneficiarios seleccionados: <span id="phaseEvidenceBeneficiariesModalCount" class="font-semibold text-[#8a4534]">0</span></span>
             </div>
             <div class="flex items-center justify-end space-x-3">
                 <button type="button" onclick="closePhaseEvidenceBeneficiariesModal()" class="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
