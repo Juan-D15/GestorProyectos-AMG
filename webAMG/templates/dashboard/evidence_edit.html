@@ -57,22 +57,22 @@
         <div class="border-b border-gray-100 pb-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">Fotos Existentes</h2>
             {% if evidence.photos.all %}
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {% for photo in evidence.photos.all %}
-                        <div class="relative group">
-                            <img src="/media/{{ photo.photo_url }}" alt="Foto de evidencia" class="w-full h-32 object-cover rounded-lg border border-gray-200">
-                            <label class="absolute top-2 right-2 cursor-pointer">
-                                <input type="checkbox" name="photos_to_delete" value="{{ photo.id }}" class="hidden peer">
-                                <div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 peer-checked:opacity-100 hover:opacity-100 transition-opacity">
-                                    <i class="fas fa-trash text-sm"></i>
-                                </div>
-                            </label>
-                            <div class="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                                #{{ photo.photo_order }}
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
+                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                     {% for photo in evidence.photos.all %}
+                         <div class="relative group photo-card" data-photo-id="{{ photo.id }}">
+                             <img src="/media/{{ photo.photo_url }}" alt="Foto de evidencia" class="w-full h-32 object-cover rounded-lg border-2 border-gray-200 transition-all cursor-pointer hover:opacity-80">
+                             <label class="absolute top-2 right-2 cursor-pointer z-10">
+                                 <input type="checkbox" name="photos_to_delete" value="{{ photo.id }}" class="hidden peer" onchange="togglePhotoDelete(this)">
+                                 <div class="w-8 h-8 bg-white/90 rounded-full flex items-center justify-center text-gray-400 peer-checked:bg-red-500 peer-checked:text-white hover:bg-red-500 hover:text-white transition-all shadow-lg">
+                                     <i class="fas fa-trash text-sm"></i>
+                                 </div>
+                             </label>
+                             <div class="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                 #{{ photo.photo_order }}
+                             </div>
+                         </div>
+                     {% endfor %}
+                 </div>
                 <p class="text-xs text-gray-500 mt-2">Marque las fotos que desea eliminar</p>
             {% else %}
                 <p class="text-sm text-gray-500">No hay fotos asociadas</p>

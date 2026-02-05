@@ -1157,3 +1157,144 @@ document.addEventListener('keydown', function(e) {
         closePhaseEvidenceBeneficiariesModal();
     }
 });
+
+// =====================================================
+// FUNCIONES PARA FILTRAR EVIDENCIAS DE PROYECTO
+// =====================================================
+
+// Event listener para limpiar caracteres no numéricos en el campo de año
+document.addEventListener('DOMContentLoaded', function() {
+    const yearInput = document.getElementById('projectEvidenceFilterYear');
+    if (yearInput) {
+        yearInput.addEventListener('input', function(e) {
+            // Solo permitir números
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    }
+});
+
+function applyProjectEvidenceFilters() {
+    console.log('=== Aplicando filtros de evidencias de proyecto ===');
+
+    const filterYear = document.getElementById('projectEvidenceFilterYear');
+    const filterStartDate = document.getElementById('projectEvidenceFilterStartDate');
+    const filterEndDate = document.getElementById('projectEvidenceFilterEndDate');
+
+    if (!filterYear && !filterStartDate && !filterEndDate) {
+        console.log('No hay filtros aplicados');
+        return;
+    }
+
+    const year = filterYear ? filterYear.value : '';
+    const startDate = filterStartDate ? filterStartDate.value : '';
+    const endDate = filterEndDate ? filterEndDate.value : '';
+
+    console.log('Filtros aplicados:', { year, startDate, endDate });
+
+    const evidenceCards = document.querySelectorAll('.evidence-card');
+    let visibleCount = 0;
+    let totalCount = 0;
+
+    evidenceCards.forEach(card => {
+        totalCount++;
+
+        const cardStartDate = card.dataset.startDate;
+        const cardEndDate = card.dataset.endDate;
+        const cardStartYear = card.dataset.startYear;
+        const cardEndYear = card.dataset.endYear;
+
+        let isVisible = true;
+
+        if (year && isVisible) {
+            if (cardStartYear !== year && cardEndYear !== year) {
+                isVisible = false;
+            }
+        }
+
+        if (isVisible && startDate) {
+            if (cardEndDate < startDate) {
+                isVisible = false;
+            }
+        }
+
+        if (isVisible && endDate) {
+            if (cardStartDate > endDate) {
+                isVisible = false;
+            }
+        }
+
+        if (isVisible) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    console.log(`Evidencias visibles: ${visibleCount} de ${totalCount}`);
+
+    const evidencesList = document.getElementById('projectEvidencesList');
+    const noResultsMsg = document.getElementById('projectEvidenceNoResults');
+
+    if (visibleCount === 0) {
+        if (!noResultsMsg) {
+            const messageDiv = document.createElement('div');
+            messageDiv.id = 'projectEvidenceNoResults';
+            messageDiv.className = 'text-center py-8';
+            messageDiv.innerHTML = `
+                <i class="fas fa-search text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">No se encontraron evidencias con los filtros seleccionados.</p>
+            `;
+            evidencesList.appendChild(messageDiv);
+        }
+    } else {
+        if (noResultsMsg) {
+            noResultsMsg.remove();
+        }
+    }
+}
+
+function clearProjectEvidenceFilters() {
+    console.log('=== Limpiando filtros de evidencias de proyecto ===');
+
+    const filterYear = document.getElementById('projectEvidenceFilterYear');
+    const filterStartDate = document.getElementById('projectEvidenceFilterStartDate');
+    const filterEndDate = document.getElementById('projectEvidenceFilterEndDate');
+
+    if (filterYear) filterYear.value = '';
+    if (filterStartDate) filterStartDate.value = '';
+    if (filterEndDate) filterEndDate.value = '';
+
+    const evidenceCards = document.querySelectorAll('.evidence-card');
+    evidenceCards.forEach(card => {
+        card.style.display = 'block';
+    });
+
+    const noResultsMsg = document.getElementById('projectEvidenceNoResults');
+    if (noResultsMsg) {
+        noResultsMsg.remove();
+    }
+
+    console.log('Filtros limpiados');
+}
+
+// =====================================================
+// FUNIONES PARA MARCAR FOTOS PARA ELIMINAR (EDICIÓN)
+// =====================================================
+
+function togglePhotoDelete(checkbox) {
+    const photoCard = checkbox.closest('.photo-card');
+    const img = photoCard.querySelector('img');
+    
+    if (checkbox.checked) {
+        // Marcar con borde rojo y opacidad reducida
+        img.classList.remove('border-gray-200');
+        img.classList.add('border-red-500', 'opacity-50');
+        photoCard.classList.add('border-red-500', 'border-4');
+    } else {
+        // Restaurar estado original
+        img.classList.remove('border-red-500', 'opacity-50');
+        img.classList.add('border-gray-200');
+        photoCard.classList.remove('border-red-500', 'border-4');
+    }
+}

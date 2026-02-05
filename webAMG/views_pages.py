@@ -631,6 +631,10 @@ def project_detail_page(request, project_id):
     # Obtener las evidencias del proyecto (solo si no tiene fases) con filtros de fechas
     evidences = ProjectEvidence.objects.filter(project=project)
 
+    # Obtener años únicos de las evidencias para el filtro
+    evidence_years = list(set(evidence.start_date.year for evidence in evidences))
+    evidence_years.sort(reverse=True)
+
     # Aplicar filtros de fechas si se proporcionan
     filter_start_date = request.GET.get('filter_start_date')
     filter_end_date = request.GET.get('filter_end_date')
@@ -782,6 +786,7 @@ def project_detail_page(request, project_id):
         'project': project,
         'project_beneficiaries': beneficiaries,
         'evidences': evidences,
+        'evidence_years': evidence_years,
         'phases': phases,
         'phases_beneficiaries': phases_beneficiaries,
         'all_beneficiaries': all_beneficiaries,
