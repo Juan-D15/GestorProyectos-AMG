@@ -260,16 +260,127 @@ function closeDeletePhaseModal() {
     document.getElementById('deletePhaseForm').reset();
 }
 
+// Manejar el envío del formulario de edición de fase
+document.addEventListener('DOMContentLoaded', function() {
+    const editPhaseForm = document.getElementById('editPhaseForm');
+    if (editPhaseForm) {
+        editPhaseForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const formData = new FormData(this);
+            const actionUrl = this.action;
+
+            console.log('Enviando formulario de edición de fase a:', actionUrl);
+
+            fetch(actionUrl, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeEditPhaseModal();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error al actualizar la fase');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al procesar la solicitud');
+            });
+        });
+    }
+});
+
+// Manejar el envío del formulario de edición de evidencia de fase
+document.addEventListener('DOMContentLoaded', function() {
+    const editPhaseEvidenceForm = document.getElementById('phaseEditEvidenceForm');
+    if (editPhaseEvidenceForm) {
+        editPhaseEvidenceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const formData = new FormData(this);
+            const actionUrl = this.action;
+
+            console.log('Enviando formulario de edición de evidencia de fase a:', actionUrl);
+
+            fetch(actionUrl, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closePhaseEditEvidenceModal();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error al actualizar la evidencia');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al procesar la solicitud');
+            });
+        });
+    }
+});
+
+// Manejar el envío del formulario de eliminación de evidencia de fase
+document.addEventListener('DOMContentLoaded', function() {
+    const deletePhaseEvidenceForm = document.getElementById('deletePhaseEvidenceFormAction');
+    if (deletePhaseEvidenceForm) {
+        deletePhaseEvidenceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const formData = new FormData(this);
+            const actionUrl = this.action;
+
+            console.log('Enviando formulario de eliminación de evidencia de fase a:', actionUrl);
+
+            fetch(actionUrl, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeDeletePhaseEvidenceModal();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error al eliminar la evidencia');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al procesar la solicitud');
+            });
+        });
+    }
+});
+
 // Manejar el envío del formulario de eliminación de fase
 document.addEventListener('DOMContentLoaded', function() {
     const deletePhaseForm = document.getElementById('deletePhaseForm');
     if (deletePhaseForm) {
         deletePhaseForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const formData = new FormData(this);
             const actionUrl = this.action;
-            
+
             fetch(actionUrl, {
                 method: 'POST',
                 headers: {
@@ -332,6 +443,11 @@ function closePhaseEvidenceModal() {
     document.getElementById('selectedPhaseEvidenceBeneficiariesBadge').classList.add('hidden');
     document.getElementById('phaseEvidencePhotosPreview').classList.add('hidden');
     document.getElementById('phaseEvidencePhotosPreview').innerHTML = '';
+    
+    // Limpiar el Set de fotos a eliminar
+    if (window.photosToDelete) {
+        window.photosToDelete.clear();
+    }
 }
 
 // Modal para detalles de evidencia de fase
@@ -344,19 +460,34 @@ function openPhaseEvidenceDetailsModal(button) {
     const createdAt = button.dataset.createdAt;
     const updatedAt = button.dataset.updatedAt;
 
-    document.getElementById('evidenceDetailStartDate').textContent = formatDate(startDate);
-    document.getElementById('evidenceDetailEndDate').textContent = formatDate(endDate);
-    document.getElementById('evidenceDetailDescription').textContent = description;
-    document.getElementById('evidenceDetailCreatedBy').textContent = createdBy;
-    document.getElementById('evidenceDetailUpdatedAt').textContent = updatedAt;
+    const modal = document.getElementById('phaseEvidenceDetailsModal');
+    if (!modal) {
+        console.error('Modal de detalles de evidencia no encontrado');
+        return;
+    }
 
-    document.getElementById('phaseEvidenceDetailsModal').classList.remove('hidden');
+    const startDateEl = document.getElementById('evidenceDetailStartDate');
+    const endDateEl = document.getElementById('evidenceDetailEndDate');
+    const descriptionEl = document.getElementById('evidenceDetailDescription');
+    const createdByEl = document.getElementById('evidenceDetailCreatedBy');
+    const updatedAtEl = document.getElementById('evidenceDetailUpdatedAt');
+
+    if (startDateEl) startDateEl.textContent = formatDate(startDate);
+    if (endDateEl) endDateEl.textContent = formatDate(endDate);
+    if (descriptionEl) descriptionEl.textContent = description;
+    if (createdByEl) createdByEl.textContent = createdBy;
+    if (updatedAtEl) updatedAtEl.textContent = updatedAt;
+
+    modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
 
 function closePhaseEvidenceDetailsModal() {
-    document.getElementById('phaseEvidenceDetailsModal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    const modal = document.getElementById('phaseEvidenceDetailsModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
 }
 
 // Modal para editar evidencia de fase
@@ -365,8 +496,14 @@ function openPhaseEditEvidenceModal(button) {
     const projectId = document.querySelector('[data-project-id]').dataset.projectId;
     const phaseId = document.querySelector('[data-phase-id]').dataset.phaseId;
 
-    const form = document.getElementById('phaseEditEvidenceForm');
-    
+    const form = document.getElementById('editPhaseEvidenceForm');
+    const modal = document.getElementById('editPhaseEvidenceModal');
+
+    if (!form || !modal) {
+        console.error('Formulario o modal de edición no encontrado');
+        return;
+    }
+
     document.getElementById('editEvidenceId').value = evidenceId;
     document.getElementById('editStartDate').value = button.dataset.startDate;
     document.getElementById('editEndDate').value = button.dataset.endDate;
@@ -452,35 +589,28 @@ function openPhaseEditEvidenceModal(button) {
 
     // Limpiar previsualización de nuevas fotos
     const previewContainer = document.getElementById('editPhaseEvidencePhotosPreview');
-    previewContainer.innerHTML = '';
-    previewContainer.classList.add('hidden');
+    if (previewContainer) {
+        previewContainer.innerHTML = '';
+        previewContainer.classList.add('hidden');
+    }
     const photoInput = document.getElementById('editPhaseEvidencePhotosInput');
-    photoInput.value = '';
+    if (photoInput) {
+        photoInput.value = '';
+    }
 
-    document.getElementById('phaseEditEvidenceModal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
 }
 
 function closePhaseEditEvidenceModal() {
-    document.getElementById('phaseEditEvidenceModal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
-    document.getElementById('phaseEditEvidenceForm').reset();
-    
-    // Limpiar previsualización de nuevas fotos
-    const previewContainer = document.getElementById('editPhaseEvidencePhotosPreview');
-    previewContainer.innerHTML = '';
-    previewContainer.classList.add('hidden');
-    
-    // Limpiar contenedor de fotos existentes
-    const photosContainer = document.getElementById('editEvidencePhotosContainer');
-    photosContainer.innerHTML = '';
-    
-    // Limpiar input de beneficiarios
-    const beneficiariesInput = document.getElementById('phaseEvidenceBeneficiariesInput');
-    if (beneficiariesInput) {
-        beneficiariesInput.value = '';
+    const modal = document.getElementById('editPhaseEvidenceModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
     }
-    
+
     // Limpiar badge de beneficiarios
     const badgeElement = document.getElementById('selectedPhaseEvidenceBeneficiariesBadge');
     if (badgeElement) {
@@ -495,7 +625,8 @@ function confirmPhaseDeleteEvidence(button) {
     const phaseId = document.querySelector('[data-phase-id]').dataset.phaseId;
 
     document.getElementById('deletePhaseEvidenceId').value = evidenceId;
-    document.getElementById('deletePhaseEvidenceForm').action = `/dashboard/proyectos/${projectId}/fases/${phaseId}/evidencias/${evidenceId}/eliminar/`;
+    const form = document.getElementById('deletePhaseEvidenceFormAction');
+    form.action = `/dashboard/proyectos/${projectId}/fases/${phaseId}/evidencias/${evidenceId}/eliminar/`;
 
     document.getElementById('deletePhaseEvidenceModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -504,7 +635,8 @@ function confirmPhaseDeleteEvidence(button) {
 function closeDeletePhaseEvidenceModal() {
     document.getElementById('deletePhaseEvidenceModal').classList.add('hidden');
     document.body.style.overflow = 'auto';
-    document.getElementById('deletePhaseEvidenceForm').reset();
+    const form = document.getElementById('deletePhaseEvidenceFormAction');
+    form.reset();
 }
 
 // Modal de beneficiarios para evidencia de fase
@@ -599,19 +731,46 @@ function previewPhaseEvidencePhotos(input) {
     previewContainer.innerHTML = '';
     previewContainer.classList.remove('hidden');
 
+    // Crear un Set para rastrear las fotos que se deben eliminar
+    if (!window.photosToDelete) {
+        window.photosToDelete = new Set();
+    }
+
     Array.from(input.files).forEach((file, index) => {
+        const photoId = `new-photo-${Date.now()}-${index}`;
         const reader = new FileReader();
         reader.onload = function(e) {
-            const preview = document.createElement('div');
-            preview.className = 'relative group';
-            preview.innerHTML = `
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'relative group';
+            previewDiv.dataset.photoId = photoId;
+            previewDiv.innerHTML = `
                 <img src="${e.target.result}" alt="Previsualización" class="w-full h-32 object-cover rounded-lg border border-gray-200">
+                <button type="button" class="absolute -top-2 -right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors flex items-center justify-center" onclick="deletePreviewedPhaseEvidencePhoto(this, '${photoId}')">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
                 <span class="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">${index + 1}</span>
             `;
-            previewContainer.appendChild(preview);
+            previewContainer.appendChild(previewDiv);
         };
         reader.readAsDataURL(file);
     });
+}
+
+function deletePreviewedPhaseEvidencePhoto(button, photoId) {
+    const previewDiv = button.parentElement;
+    previewDiv.remove();
+    
+    // Agregar el ID de la foto al Set de fotos a eliminar
+    if (!window.photosToDelete) {
+        window.photosToDelete = new Set();
+    }
+    window.photosToDelete.add(photoId);
+    
+    // Ocultar el contenedor si no hay más fotos
+    const previewContainer = document.getElementById('phaseEvidencePhotosPreview');
+    if (previewContainer.children.length === 0) {
+        previewContainer.classList.add('hidden');
+    }
 }
 
 // Previsualización de nuevas fotos al editar evidencia de fase
@@ -673,25 +832,25 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Formulario de edición enviado');
             console.log('Action:', this.action);
             console.log('Method:', this.method);
-            
+
             // Verificar fotos marcadas para eliminar
             const photosToDelete = this.querySelectorAll('input[name="photos_to_delete"]:checked');
             console.log('Fotos marcadas para eliminar:', photosToDelete.length);
             photosToDelete.forEach((checkbox, index) => {
                 console.log(`  - Foto ${index + 1}: ID ${checkbox.value}`);
             });
-            
+
             // Verificar nuevas fotos
             const newPhotos = this.querySelector('#editPhaseEvidencePhotosInput');
             console.log('Nuevas fotos a subir:', newPhotos.files.length);
-            
+
             // Verificar beneficiarios
             const beneficiariesInput = this.querySelector('#phaseEvidenceBeneficiariesInput');
             console.log('Beneficiarios seleccionados:', beneficiariesInput.value);
-            
+
             // Permitir envío normal
-        return true;
-    });
+        });
+    }
 });
 
 // Funciones para modal de beneficiarios de fase (phase_edit.html)
@@ -792,8 +951,14 @@ document.getElementById('phaseEvidenceDetailsModal')?.addEventListener('click', 
     if (e.target === this) closePhaseEvidenceDetailsModal();
 });
 
-document.getElementById('phaseEditEvidenceModal')?.addEventListener('click', function(e) {
+document.getElementById('editPhaseEvidenceModal')?.addEventListener('click', function(e) {
     if (e.target === this) closePhaseEditEvidenceModal();
+});
+document.getElementById('deletePhaseEvidenceModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeDeletePhaseEvidenceModal();
+});
+document.getElementById('phaseEvidenceBeneficiariesModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closePhaseEvidenceBeneficiariesModal();
 });
 
 document.getElementById('deletePhaseEvidenceModal')?.addEventListener('click', function(e) {
@@ -816,5 +981,125 @@ document.addEventListener('keydown', function(e) {
         closePhaseEditEvidenceModal();
         closeDeletePhaseEvidenceModal();
         closePhaseEvidenceBeneficiariesModal();
+        closePhotoModal();
     }
+});
+
+// Cerrar modal de foto al hacer clic fuera
+document.getElementById('photoModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closePhotoModal();
+});
+
+// Función para navegar entre las fotos de una evidencia de fase
+function navigatePhaseEvidencePhotos(evidenceId, direction) {
+    const container = document.getElementById(`phase-evidence-photos-${evidenceId}`);
+    if (!container) return;
+    
+    const photos = container.querySelectorAll('.evidence-photo');
+    const totalPhotos = photos.length;
+    const photosPerPage = 6;
+    
+    // Obtener la página actual del contenedor
+    let currentPage = parseInt(container.getAttribute('data-current-page') || '0');
+    
+    // Calcular el número total de páginas
+    const totalPages = Math.ceil(totalPhotos / photosPerPage);
+    
+    // Calcular la nueva página
+    let newPage = currentPage + direction;
+    newPage = Math.max(0, Math.min(newPage, totalPages - 1));
+    
+    // Actualizar la página actual en el contenedor
+    container.setAttribute('data-current-page', newPage.toString());
+    
+    // Calcular el índice de inicio y fin
+    const startIndex = newPage * photosPerPage;
+    const endIndex = Math.min(startIndex + photosPerPage, totalPhotos);
+    
+    // Ocultar todas las fotos
+    photos.forEach(function(photo, index) {
+        if (index >= startIndex && index < endIndex) {
+            photo.style.display = 'block';
+        } else {
+            photo.style.display = 'none';
+        }
+    });
+    
+    // Prevenir comportamiento por defecto de los botones
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+}
+
+// Función para abrir el modal de foto en tamaño completo
+function openPhotoModal(button) {
+    const photoUrl = button.getAttribute('data-photo-url');
+    const photoCaption = button.getAttribute('data-photo-caption');
+    
+    document.getElementById('photoModalImage').src = '/media/' + photoUrl;
+    document.getElementById('photoModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePhotoModal() {
+    document.getElementById('photoModal').classList.add('hidden');
+    document.getElementById('photoModalImage').src = '';
+    document.body.style.overflow = 'auto';
+}
+
+// Inicializar las fotos de evidencias de fases al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    // Para cada evidencia de fase, configurar el grid de fotos dinámicamente
+    document.querySelectorAll('[id^="phase-evidence-photos-"]').forEach(function(container) {
+        const photos = container.querySelectorAll('.evidence-photo');
+        const totalPhotos = photos.length;
+        
+        console.log(`Configurando evidencia de fase ${container.id.replace('phase-evidence-photos-', '')} con ${totalPhotos} fotos`);
+        
+        // Calcular el número óptimo de columnas basado en la cantidad de fotos
+        let columns = 1;
+        if (totalPhotos === 1) {
+            columns = 1;
+        } else if (totalPhotos === 2) {
+            columns = 2;
+        } else if (totalPhotos >= 3 && totalPhotos <= 4) {
+            columns = 2;
+        } else if (totalPhotos >= 5) {
+            columns = 3;
+        }
+        
+        // Aplicar las columnas al grid
+        container.classList.remove('grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'md:grid-cols-1', 'md:grid-cols-2', 'md:grid-cols-3');
+        container.classList.add('grid-cols-' + columns, 'md:grid-cols-' + columns);
+        
+        // Ocultar botones de navegación si hay menos de 7 fotos
+        const parent = container.parentElement;
+        const navButtons = parent.querySelectorAll('button');
+        if (totalPhotos < 7) {
+            navButtons.forEach(function(btn) {
+                btn.style.display = 'none';
+            });
+        } else {
+            navButtons.forEach(function(btn) {
+                btn.style.display = 'flex';
+            });
+            
+            // Inicializar la página actual en 0
+            container.setAttribute('data-current-page', '0');
+            
+            // Mostrar solo las primeras 6 fotos
+            const photosPerPage = 6;
+            photos.forEach(function(photo, index) {
+                if (index < photosPerPage) {
+                    photo.style.display = 'block';
+                } else {
+                    photo.style.display = 'none';
+                }
+            });
+        }
+        
+        console.log(`  - Columnas: ${columns}`);
+        console.log(`  - Botones navegación: ${navButtons.length > 0 ? 'mostrados' : 'ocultos'}`);
+    });
 });

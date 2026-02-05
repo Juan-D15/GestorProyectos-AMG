@@ -10,6 +10,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.stopPropagation();
                 return;
             }
+            // Si el elemento también tiene data-phase-id, no navegar (es una página de detalle de fase)
+            if (this.hasAttribute('data-phase-id')) {
+                return;
+            }
             const projectId = this.getAttribute('data-project-id');
             window.location.href = `/dashboard/proyectos/${projectId}/`;
         });

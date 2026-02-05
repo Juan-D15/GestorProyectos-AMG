@@ -7,6 +7,7 @@
 {% block page_subtitle %}Editar Proyecto{% endblock %} 
 
 {% block extra_js %}
+{{ block.super }}
 <script src="{% static 'src/js/phases.js' %}"></script>
 <script src="{% static 'src/js/evidences.js' %}"></script>
 <script src="{% static 'src/js/project_detail.js' %}"></script>
@@ -202,8 +203,8 @@
 
 <!-- Secciones de Fases y Evidencias -->
 {% if project.has_phases %}
-    <!-- Fases del Proyecto -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+     <!-- Fases del Proyecto -->
+    <div id="phases-section" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-900">
                 <i class="fas fa-tasks text-[#8a4534] mr-2"></i>Fases del Proyecto
@@ -213,6 +214,42 @@
                 <span>Agregar Fase</span>
             </button>
         </div>
+
+        <!-- Filtros de fases -->
+        <div class="bg-gray-50 rounded-lg p-4 mb-4">
+            <form method="get" action="{% url 'project_detail' project.id %}" id="phasesFilterForm" class="space-y-3">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Nombre de Fase</label>
+                        <input type="text" name="filter_phase_name" value="{{ filter_phase_name|default:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]" placeholder="Buscar por nombre...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Fecha Inicio</label>
+                        <input type="date" name="filter_phase_start" value="{{ filter_phase_start|default:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Fecha Fin</label>
+                        <input type="date" name="filter_phase_end" value="{{ filter_phase_end|default:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Año</label>
+                        <input type="text" name="filter_phase_year" value="{{ filter_phase_year|default:'' }}" pattern="\d+" min="1900" max="2100"
+                               placeholder="Ej: 2024"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]"
+                               onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, ''); if (this.value && this.value > 2100) this.value = 2100;">
+                    </div>
+                    <div class="flex items-end space-x-2 md:col-span-4">
+                        <button type="submit" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-[#8a4534] hover:bg-[#a05240] rounded-lg transition-colors">
+                            <i class="fas fa-filter mr-2"></i>Filtrar Fases
+                        </button>
+                        <a href="{% url 'project_detail' project.id %}#phases-section" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
         {% if phases %}
             <div class="space-y-4">
                 {% for phase in phases %}
@@ -221,7 +258,7 @@
                             <div>
                                 <h4 class="font-medium text-gray-900">
                                     <i class="fas fa-layer-group text-[#8a4534] mr-2"></i>
-                                    Fase {{ phase.phase_number }}: {{ phase.phase_name }}
+                                    {{ phase.phase_name }}
                                 </h4>
                                 <p class="text-sm text-gray-500 mt-1">
                                     {{ phase.start_date|date:"d/m/Y" }} {% if phase.end_date and phase.end_date != phase.start_date %} - {{ phase.end_date|date:"d/m/Y" }}{% endif %}
@@ -272,7 +309,8 @@
         {% else %}
             <div class="text-center py-8">
                 <i class="fas fa-layer-group text-4xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500">No hay fases creadas para este proyecto.</p>
+                <p class="text-gray-500">No hay fases registradas{% if filter_phase_name or filter_phase_start or filter_phase_end or filter_phase_year %} con los filtros seleccionados{% endif %}.</p>
+                <p class="text-sm text-gray-400">Haga clic en "Agregar Fase" para registrar una nueva fase{% if filter_phase_name or filter_phase_start or filter_phase_end or filter_phase_year %} o limpie los filtros para ver todas las fases{% endif %}</p>
                 <button type="button" onclick="openPhaseModal()" class="mt-4 inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-[#8a4534] border border-[#8a4534] hover:bg-[#8a4534] hover:text-white rounded-lg transition-colors">
                     <i class="fas fa-plus"></i>
                     <span>Agregar Fase</span>
@@ -518,7 +556,6 @@
             </div>
         </form>
     </div>
-</div>
 </div>
 
 <!-- Modal de confirmación para eliminar evidencia -->

@@ -3,6 +3,7 @@ Vistas para renderizar páginas HTML de la aplicación.
 Este módulo contiene todas las vistas que renderizan plantillas HTML.
 """
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
 from django.views.generic import TemplateView
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -695,8 +696,77 @@ def project_detail_page(request, project_id):
     print(f'Evidencias encontradas: {evidences.count()}')
 
     # Obtener las fases del proyecto
-    phases = ProjectPhase.objects.filter(project=project).order_by('phase_number')
-    print(f'Fases encontradas: {phases.count()}')
+    phases = ProjectPhase.objects.filter(project=project)
+
+    # Aplicar filtros de fases si se proporcionan
+    filter_phase_name = request.GET.get('filter_phase_name')
+    filter_phase_start = request.GET.get('filter_phase_start')
+    filter_phase_end = request.GET.get('filter_phase_end')
+    filter_phase_year = request.GET.get('filter_phase_year')
+
+    # Filtro por nombre de fase
+    if filter_phase_name:
+        phases = phases.filter(phase_name__icontains=filter_phase_name)
+        print(f'Filtro: nombre de fase contiene "{filter_phase_name}"')
+
+    # Lógica de filtrado por rango de fechas para fases
+    if filter_phase_start or filter_phase_end:
+        from django.db.models import Q
+
+        try:
+            if filter_phase_start and filter_phase_end:
+                # Ambas fechas proporcionadas: filtro por rango completo
+                start_date = datetime.strptime(filter_phase_start, '%Y-%m-%d').date()
+                end_date = datetime.strptime(filter_phase_end, '%Y-%m-%d').date()
+
+                # Una fase está en el rango si cumple alguna de estas condiciones:
+                # 1. Empieza en el rango (start_date está entre filtro_start y filtro_end)
+                # 2. Termina en el rango (end_date está entre filtro_start y filtro_end)
+                # 3. Abarca todo el rango (empieza antes y termina después)
+                phases = phases.filter(
+                    Q(start_date__gte=start_date, start_date__lte=end_date) |
+                    Q(end_date__gte=start_date, end_date__lte=end_date) |
+                    Q(start_date__lte=start_date, end_date__gte=end_date)
+                )
+                print(f'Filtro fases: rango de {start_date} a {end_date}')
+
+            elif filter_phase_start:
+                # Solo fecha de inicio: fases que incluyen esa fecha o empiezan después
+                start_date = datetime.strptime(filter_phase_start, '%Y-%m-%d').date()
+                phases = phases.filter(
+                    Q(start_date__lte=start_date, end_date__gte=start_date) |
+                    Q(start_date__gte=start_date)
+                )
+                print(f'Filtro fases: que incluyen o empiezan después de {start_date}')
+
+            elif filter_phase_end:
+                # Solo fecha de fin: fases que incluyen esa fecha o terminan antes
+                end_date = datetime.strptime(filter_phase_end, '%Y-%m-%d').date()
+                phases = phases.filter(
+                    Q(start_date__lte=end_date, end_date__gte=end_date) |
+                    Q(end_date__lte=end_date)
+                )
+                print(f'Filtro fases: que incluyen o terminan antes de {end_date}')
+
+        except ValueError:
+            print('Error al procesar fechas del filtro de fases')
+            pass
+
+    # Filtro por año de fase
+    if filter_phase_year:
+        try:
+            year = int(filter_phase_year)
+            if year > 0 and year <= 2100:
+                phases = phases.filter(start_date__year=year)
+                print(f'Filtro fases: año {year}')
+            else:
+                print(f'Filtro de año inválido para fases: {year} (debe ser positivo y <= 2100)')
+        except ValueError:
+            print(f'Filtro de año no válido para fases: {filter_phase_year}')
+            pass
+
+    phases = phases.order_by('phase_number')
+    print(f'Fases encontradas después de filtros: {phases.count()}')
 
     # Obtener los IDs de beneficiarios de cada fase
     phases_beneficiaries = {}
@@ -718,6 +788,10 @@ def project_detail_page(request, project_id):
         'filter_start_date': filter_start_date,
         'filter_end_date': filter_end_date,
         'filter_year': filter_year,
+        'filter_phase_name': filter_phase_name,
+        'filter_phase_start': filter_phase_start,
+        'filter_phase_end': filter_phase_end,
+        'filter_phase_year': filter_phase_year,
     }
 
     return render(request, "dashboard/project_detail.html", context)
@@ -1159,11 +1233,17 @@ def phase_edit(request, project_id, phase_id):
 
             # Validar campos requeridos
             if not phase_name:
-                messages.error(request, 'Debe especificar el nombre de la fase.')
+                error_msg = 'Debe especificar el nombre de la fase.'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'message': error_msg}, status=400)
+                messages.error(request, error_msg)
                 return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
             if not start_date:
-                messages.error(request, 'Debe especificar la fecha de inicio.')
+                error_msg = 'Debe especificar la fecha de inicio.'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'message': error_msg}, status=400)
+                messages.error(request, error_msg)
                 return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
             # Si no se especifica fecha de fin, usar la fecha de inicio
@@ -1175,7 +1255,10 @@ def phase_edit(request, project_id, phase_id):
                 end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
 
             if end_date < start_date:
-                messages.error(request, 'La fecha de fin debe ser posterior o igual a la fecha de inicio.')
+                error_msg = 'La fecha de fin debe ser posterior o igual a la fecha de inicio.'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'message': error_msg}, status=400)
+                messages.error(request, error_msg)
                 return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
             # Actualizar la fase
@@ -1206,11 +1289,21 @@ def phase_edit(request, project_id, phase_id):
                 except Beneficiary.DoesNotExist:
                     pass
 
+            # Respuesta AJAX o redirección normal
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Fase "{phase_name}" actualizada exitosamente.'
+                })
+
             messages.success(request, f'Fase "{phase_name}" actualizada exitosamente.')
             return redirect('project_detail', project_id=project_id)
 
         except Exception as e:
-            messages.error(request, f'Error al actualizar la fase: {str(e)}')
+            error_msg = f'Error al actualizar la fase: {str(e)}'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': error_msg}, status=500)
+            messages.error(request, error_msg)
             return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
     # Obtener todos los beneficiarios disponibles
@@ -1278,6 +1371,9 @@ def phase_delete(request, project_id, phase_id):
     phase = get_object_or_404(ProjectPhase, id=phase_id, project=project)
 
     if request.method == 'POST':
+        import os
+        from django.conf import settings
+
         password = request.POST.get('password')
 
         if not password:
@@ -1587,10 +1683,19 @@ def phase_evidence_delete(request, project_id, phase_id, evidence_id):
             phase.updated_at = timezone.now()
             phase.save(update_fields=['updated_at'])
 
+            # Respuesta AJAX o redirección normal
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Evidencia eliminada exitosamente.'
+                })
+
             messages.success(request, 'Evidencia eliminada exitosamente.')
             return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
         except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': f'Error al eliminar la evidencia: {str(e)}'}, status=500)
             messages.error(request, f'Error al eliminar la evidencia: {str(e)}')
 
     return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
@@ -1601,7 +1706,7 @@ def phase_evidence_photos(request, project_id, phase_id, evidence_id):
     """
     Vista para obtener las fotos de una evidencia de fase (JSON).
     """
-    from webAMG.models import Project, ProjectPhase, PhaseEvidence
+    from webAMG.models import Project, ProjectPhase, PhaseEvidence, PhaseEvidencePhoto
 
     project = get_object_or_404(Project, id=project_id)
     phase = get_object_or_404(ProjectPhase, id=phase_id, project=project)
