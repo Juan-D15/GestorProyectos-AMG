@@ -8,6 +8,7 @@
 {% block extra_js %}
 <script src="{% static 'src/js/projects.js' %}"></script>
 <script src="{% static 'src/js/beneficiaries_evidence.js' %}"></script>
+<script src="{% static 'src/js/evidences.js' %}"></script>
 <script src="{% static 'src/js/phases.js' %}"></script>
 {% endblock %}
 
@@ -184,6 +185,19 @@
             {% if evidence.photos.all %}
             <div class="relative">
                 {% if evidence.photos.all|length > 6 %}
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const container = document.getElementById('phase-evidence-photos-{{ evidence.id }}');
+                            if (container) {
+                                const photos = container.querySelectorAll('.evidence-photo');
+                                photos.forEach(function(photo, index) {
+                                    if (index >= 6) {
+                                        photo.style.display = 'none';
+                                    }
+                                });
+                            }
+                        });
+                    </script>
                     <button type="button" onclick="navigatePhaseEvidencePhotos('{{ evidence.id }}', -1)" class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-8 h-8 bg-white hover:bg-gray-100 rounded-full shadow-lg border border-gray-200 flex items-center justify-center transition-colors">
                         <i class="fas fa-chevron-left text-gray-600"></i>
                     </button>
@@ -191,21 +205,35 @@
                         <i class="fas fa-chevron-right text-gray-600"></i>
                     </button>
                 {% endif %}
-                <div id="phase-evidence-photos-{{ evidence.id }}" class="grid gap-2">
-                    {% for photo in evidence.photos.all %}
-                        <div class="relative group evidence-photo rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow" data-index="{{ forloop.counter0 }}">
-                            <img src="/media/{{ photo.photo_url }}" alt="{{ photo.caption|default:'Foto de evidencia' }}" class="w-full h-32 md:h-36 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                 data-photo-url="{{ photo.photo_url }}"
-                                 data-photo-caption="{{ photo.caption|default:''|escapejs }}"
-                                 onclick="openPhotoModal(this)">
-                            {% if photo.caption %}
-                                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-xs p-2">
-                                    {{ photo.caption }}
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
+                {% with total_photos=evidence.photos.all|length %}
+                    {% if total_photos == 1 %}
+                        <div id="phase-evidence-photos-{{ evidence.id }}" class="grid grid-cols-1 md:grid-cols-1 gap-2">
+                    {% elif total_photos == 2 %}
+                        <div id="phase-evidence-photos-{{ evidence.id }}" class="grid grid-cols-2 md:grid-cols-2 gap-2">
+                    {% elif total_photos == 3 %}
+                        <div id="phase-evidence-photos-{{ evidence.id }}" class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {% elif total_photos == 4 %}
+                        <div id="phase-evidence-photos-{{ evidence.id }}" class="grid grid-cols-2 md:grid-cols-2 gap-2">
+                    {% elif total_photos >= 5 and total_photos <= 6 %}
+                        <div id="phase-evidence-photos-{{ evidence.id }}" class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {% else %}
+                        <div id="phase-evidence-photos-{{ evidence.id }}" class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {% endif %}
+                        {% for photo in evidence.photos.all %}
+                            <div class="relative group evidence-photo rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow" data-index="{{ forloop.counter0 }}">
+                                <img src="/media/{{ photo.photo_url }}" alt="{{ photo.caption|default:'Foto de evidencia' }}" class="w-full h-32 md:h-36 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                     data-photo-url="{{ photo.photo_url }}"
+                                     data-photo-caption="{{ photo.caption|default:''|escapejs }}"
+                                     onclick="openPhotoModal(this)">
+                                {% if photo.caption %}
+                                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-xs p-2">
+                                        {{ photo.caption }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endwith %}
             </div>
             {% endif %}
         </div>
@@ -228,14 +256,18 @@
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         <div class="p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
             <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">Agregar Evidencia a la Fase</h3>
+                <h3 id="phaseEvidenceModalTitle" class="text-lg font-semibold text-gray-900">Agregar Evidencia a la Fase</h3>
                 <button onclick="closePhaseEvidenceModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <i class="fas fa-times text-lg"></i>
                 </button>
             </div>
         </div>
-        <form method="POST" action="{% url 'phase_evidence_add' project.id phase.id %}" enctype="multipart/form-data" id="phaseEvidenceForm" class="p-6 space-y-4">
+        <form id="phaseEvidenceForm" method="post" action="{% url 'phase_evidence_add' project.id phase.id %}" class="p-6 space-y-6" enctype="multipart/form-data">
             {% csrf_token %}
+            <input type="hidden" name="evidence_id" id="phaseEvidenceIdInput" value="">
+            <input type="hidden" name="photos_to_delete" id="phaseEvidencePhotosToDeleteInput" value="">
+
+            <!-- Fechas -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio *</label>
@@ -246,10 +278,14 @@
                     <input type="date" name="end_date" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
                 </div>
             </div>
+
+            <!-- Descripción -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Descripción de lo que se hizo *</label>
                 <textarea name="description" rows="4" required class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]" placeholder="Describa las actividades realizadas en este periodo..."></textarea>
             </div>
+
+            <!-- Beneficiarios (opcional) -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Beneficiarios participantes <span class="text-xs text-gray-500 font-normal">(opcional)</span></label>
                 <div class="relative">
@@ -262,9 +298,19 @@
                             <span id="selectedPhaseEvidenceBeneficiariesBadge" class="text-xs bg-[#8a4534] text-white px-2 py-1 rounded-full hidden">0 seleccionados</span>
                         </div>
                     </button>
-                    <input type="hidden" name="beneficiaries" id="phaseEvidenceBeneficiariesInput" value="">
+                    <input type="hidden" name="beneficiaries" id="createPhaseEvidenceBeneficiariesInput" value="">
                 </div>
             </div>
+
+            <!-- Lista de beneficiarios seleccionados -->
+            <div id="selectedPhaseEvidenceBeneficiariesContainer" class="bg-gray-50 rounded-xl border border-gray-200 p-4 mt-3 mb-6 hidden">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">Beneficiarios seleccionados (<span id="selectedPhaseEvidenceBeneficiariesCount">0</span>)</h4>
+                <div id="selectedPhaseEvidenceBeneficiariesList" class="space-y-2">
+                    <p class="text-sm text-gray-500">No hay beneficiarios seleccionados</p>
+                </div>
+            </div>
+
+            <!-- Fotos -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Fotos de la Evidencia</label>
                 <div class="relative">
@@ -282,6 +328,8 @@
                 <div id="phaseEvidencePhotosPreview" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 hidden">
                 </div>
             </div>
+
+            <!-- Botones -->
             <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-100">
                 <button type="button" onclick="closePhaseEvidenceModal()" class="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                     Cancelar
@@ -294,20 +342,23 @@
     </div>
 </div>
 
-<!-- Modal para editar evidencia de fase -->
+<!-- Modal de edición de evidencia de fase -->
 <div id="editPhaseEvidenceModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         <div class="p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
             <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">Editar Evidencia de la Fase</h3>
+                <h3 id="editPhaseEvidenceModalTitle" class="text-lg font-semibold text-gray-900">Editar Evidencia</h3>
                 <button onclick="closePhaseEditEvidenceModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <i class="fas fa-times text-lg"></i>
                 </button>
             </div>
         </div>
-        <form method="POST" enctype="multipart/form-data" id="editPhaseEvidenceForm" action="" class="p-6 space-y-4">
+        <form id="editPhaseEvidenceForm" method="post" enctype="multipart/form-data" class="p-6 space-y-6">
             {% csrf_token %}
             <input type="hidden" name="evidence_id" id="editEvidenceId" value="">
+            <input type="hidden" name="beneficiaries" id="editPhaseEvidenceBeneficiariesInput" value="">
+
+            <!-- Fechas -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio *</label>
@@ -318,39 +369,16 @@
                     <input type="date" name="end_date" id="editEndDate" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]">
                 </div>
             </div>
+
+            <!-- Descripción -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Descripción de lo que se hizo *</label>
-                <textarea name="description" id="editDescription" rows="4" required class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]"></textarea>
+                <textarea name="description" id="editDescription" rows="4" required class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8a4534]/20 focus:border-[#8a4534]" placeholder="Describa las actividades realizadas en este periodo..."></textarea>
             </div>
-            
-            <!-- Fotos Existentes -->
+
+            <!-- Beneficiarios participantes -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Fotos Existentes</label>
-                <div id="editEvidencePhotosContainer" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
-                <p class="text-xs text-gray-500 mt-1">Marque las fotos que desea eliminar</p>
-            </div>
-            
-            <!-- Agregar Nuevas Fotos -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Agregar Nuevas Fotos</label>
-                <div class="relative">
-                    <input type="file" name="new_photos" id="editPhaseEvidencePhotosInput" accept="image/*" multiple class="hidden" onchange="previewEditPhaseEvidencePhotos(this)">
-                    <label for="editPhaseEvidencePhotosInput" class="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#8a4534] hover:bg-[#8a4534]/5 transition-all">
-                        <div class="flex flex-col items-center space-y-2">
-                            <i class="fas fa-cloud-upload-alt text-2xl text-gray-400"></i>
-                            <div class="text-center">
-                                <p class="text-sm font-medium text-gray-700">Subir nuevas fotos</p>
-                                <p class="text-xs text-gray-500">o arrastra y suelta aquí (múltiples)</p>
-                            </div>
-                        </div>
-                    </label>
-                </div>
-                <div id="editPhaseEvidencePhotosPreview" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 hidden"></div>
-            </div>
-            
-            <!-- Beneficiarios -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Beneficiarios participantes</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Beneficiarios participantes <span class="text-xs text-gray-500 font-normal">(opcional)</span></label>
                 <div class="relative">
                     <button type="button" onclick="openPhaseEvidenceBeneficiariesModal()" class="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-left hover:border-[#8a4534] hover:bg-[#8a4534]/5 transition-all">
                         <div class="flex items-center justify-between">
@@ -361,9 +389,49 @@
                             <span id="selectedPhaseEvidenceBeneficiariesBadge" class="text-xs bg-[#8a4534] text-white px-2 py-1 rounded-full hidden">0 seleccionados</span>
                         </div>
                     </button>
-                    <input type="hidden" name="beneficiaries" id="phaseEvidenceBeneficiariesInput" value="">
+                    <input type="hidden" name="beneficiaries" id="editPhaseEvidenceBeneficiariesInput" value="">
                 </div>
             </div>
+
+            <!-- Lista de beneficiarios seleccionados -->
+            <div id="selectedPhaseEvidenceBeneficiariesContainer" class="bg-gray-50 rounded-xl border border-gray-200 p-4 mt-3 mb-6 hidden">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">Beneficiarios seleccionados (<span id="selectedPhaseEvidenceBeneficiariesCount">0</span>)</h4>
+                <div id="selectedPhaseEvidenceBeneficiariesList" class="space-y-2">
+                    <p class="text-sm text-gray-500">No hay beneficiarios seleccionados</p>
+                </div>
+            </div>
+
+            <!-- Nuevas fotos -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nuevas Fotos</label>
+                <div class="relative">
+                    <input type="file" name="photos" id="editPhaseEvidencePhotosInput" accept="image/*" multiple class="hidden" onchange="previewEditPhaseEvidencePhotos(this)">
+                    <label for="editPhaseEvidencePhotosInput" class="flex items-center justify-center w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#8a4534] hover:bg-[#8a4534]/5 transition-all">
+                        <div class="flex flex-col items-center space-y-2">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400"></i>
+                            <div class="text-center">
+                                <p class="text-sm font-medium text-gray-700">Subir fotos adicionales</p>
+                                <p class="text-xs text-gray-500">o arrastra y suelta aquí (múltiples)</p>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                <div id="editPhaseEvidencePhotosPreview" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 hidden">
+                </div>
+            </div>
+
+            <!-- Fotos existentes -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-medium text-gray-700">Fotos existentes</h4>
+                    <p class="text-xs text-gray-500">Marque para eliminar</p>
+                </div>
+                <div id="editEvidencePhotosContainer" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <p class="text-sm text-gray-500 col-span-full">No hay fotos asociadas</p>
+                </div>
+            </div>
+            
+            <!-- Botones -->
             <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-100">
                 <button type="button" onclick="closePhaseEditEvidenceModal()" class="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                     Cancelar
@@ -402,14 +470,18 @@
                 <p class="text-sm text-gray-500 mb-1">Descripción</p>
                 <p class="font-medium text-gray-900" id="evidenceDetailDescription"></p>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                    <p class="text-gray-500">Creado por</p>
-                    <p class="font-medium text-gray-900" id="evidenceDetailCreatedBy"></p>
+            
+            <!-- Fotos de la evidencia -->
+            <div id="evidenceDetailPhotosSection" class="hidden">
+                <h4 class="text-sm font-medium text-gray-700 mb-3">Fotos</h4>
+                <div id="evidenceDetailPhotos" class="grid grid-cols-2 md:grid-cols-3 gap-3">
                 </div>
-                <div>
-                    <p class="text-gray-500">Última actualización</p>
-                    <p class="font-medium text-gray-900" id="evidenceDetailUpdatedAt"></p>
+            </div>
+            
+            <!-- Beneficiarios de la evidencia -->
+            <div id="evidenceDetailBeneficiariesSection" class="hidden">
+                <h4 class="text-sm font-medium text-gray-700 mb-3">Beneficiarios participantes</h4>
+                <div id="evidenceDetailBeneficiaries" class="space-y-2">
                 </div>
             </div>
         </div>
@@ -457,20 +529,19 @@
             </div>
             <div class="space-y-2" id="phaseEvidenceBeneficiariesList">
                 {% for beneficiary in all_beneficiaries %}
-                    <div class="phase-evidence-beneficiary-item flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" 
+                    <div class="phase-evidence-beneficiary-item flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors" 
                         data-id="{{ beneficiary.id }}" 
                         data-name="{{ beneficiary.full_name }}" 
                         data-dpi="{{ beneficiary.cui_dpi|default:'' }}"
-                        data-community="{{ beneficiary.community|default:'' }}"
-                        onclick="togglePhaseEvidenceBeneficiarySelection(this)">
-                        <input type="checkbox" class="w-5 h-5 text-[#8a4534] border-gray-300 rounded focus:ring-[#8a4534] cursor-pointer" onclick="event.stopPropagation()">
-                        <div class="ml-3 flex-1">
-                            <p class="text-sm font-medium text-gray-900">{{ beneficiary.full_name }}</p>
-                            <p class="text-xs text-gray-500">
-                                {% if beneficiary.cui_dpi %}DPI: {{ beneficiary.cui_dpi }}{% endif %}
-                                {% if beneficiary.community %} • {{ beneficiary.community }}{% endif %}
-                            </p>
-                        </div>
+                        data-community="{{ beneficiary.community|default:'' }}">
+                         <input type="checkbox" class="w-5 h-5 text-[#8a4534] border-gray-300 rounded focus:ring-[#8a4534] cursor-pointer" value="{{ beneficiary.id }}">
+                         <div class="ml-3 flex-1">
+                             <p class="text-sm font-medium text-gray-900">{{ beneficiary.full_name }}</p>
+                             <p class="text-xs text-gray-500">
+                                 {% if beneficiary.cui_dpi %}DPI: {{ beneficiary.cui_dpi }}{% endif %}
+                                 {% if beneficiary.community %} • {{ beneficiary.community }}{% endif %}
+                             </p>
+                         </div>
                     </div>
                 {% empty %}
                     <p class="text-sm text-gray-500 text-center py-8">No hay beneficiarios disponibles</p>
@@ -494,11 +565,13 @@
 </div>
 
 <!-- Modal de foto -->
-<div id="photoModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50 hidden">
-    <button onclick="closePhotoModal()" class="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 transition-colors">
-        <i class="fas fa-times"></i>
-    </button>
-    <img id="photoModalImage" src="" alt="Foto de evidencia" class="max-w-full max-h-screen object-contain">
+<div id="photoModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+    <div class="relative max-w-3xl max-h-[85vh]">
+        <button onclick="closePhotoModal()" class="absolute -top-4 -right-4 text-white hover:text-gray-300 text-2xl z-10">
+            <i class="fas fa-times"></i>
+        </button>
+        <img id="photoModalImage" src="" alt="Foto de evidencia" class="max-w-full max-h-[80vh] object-contain rounded-lg">
+    </div>
 </div>
 
 {% endblock %}

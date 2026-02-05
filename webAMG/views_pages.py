@@ -1432,6 +1432,8 @@ def phase_evidence_add(request, project_id, phase_id):
 
             # Validar fechas
             if not start_date:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'message': 'Debe especificar la fecha de inicio.'}, status=400)
                 messages.error(request, 'Debe especificar la fecha de inicio.')
                 return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
@@ -1440,10 +1442,14 @@ def phase_evidence_add(request, project_id, phase_id):
                 end_date = start_date
 
             if end_date < start_date:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'message': 'La fecha de fin debe ser posterior o igual a la fecha de inicio.'}, status=400)
                 messages.error(request, 'La fecha de fin debe ser posterior o igual a la fecha de inicio.')
                 return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
             if not description:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'message': 'Debe proporcionar una descripción de la evidencia.'}, status=400)
                 messages.error(request, 'Debe proporcionar una descripción de la evidencia.')
                 return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
@@ -1461,18 +1467,28 @@ def phase_evidence_add(request, project_id, phase_id):
             phase.save(update_fields=['updated_at'])
 
             # Procesar beneficiarios
-            beneficiaries_ids = request.POST.get('beneficiaries', '').split(',')
+            beneficiaries_raw = request.POST.get('beneficiaries', '')
+            print(f"DEBUG: beneficiaries_raw = '{beneficiaries_raw}'")
+            print(f"DEBUG: request.POST keys = {list(request.POST.keys())}")
+            
+            beneficiaries_ids = beneficiaries_raw.split(',')
             beneficiaries_ids = [int(b_id.strip()) for b_id in beneficiaries_ids if b_id.strip().isdigit()]
+            
+            print(f"DEBUG: beneficiaries_ids = {beneficiaries_ids}")
+            print(f"DEBUG: Cantidad de beneficiarios a guardar = {len(beneficiaries_ids)}")
 
             for beneficiary_id in beneficiaries_ids:
                 try:
                     beneficiary = Beneficiary.objects.get(id=beneficiary_id)
-                    PhaseEvidenceBeneficiary.objects.create(
+                    evidence_beneficiary = PhaseEvidenceBeneficiary.objects.create(
                         phase_evidence=evidence,
                         beneficiary=beneficiary
                     )
+                    print(f"DEBUG: Beneficiario guardado: {beneficiary.full_name} (ID: {beneficiary_id})")
                 except Beneficiary.DoesNotExist:
-                    pass
+                    print(f"DEBUG: Beneficiario no encontrado con ID: {beneficiary_id}")
+                except Exception as e:
+                    print(f"DEBUG: Error al guardar beneficiario {beneficiary_id}: {str(e)}")
 
             # Procesar fotos
             photos = request.FILES.getlist('photos')
@@ -1501,10 +1517,15 @@ def phase_evidence_add(request, project_id, phase_id):
                         uploaded_by=request.user
                     )
 
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': f'Evidencia agregada exitosamente a la fase "{phase.phase_name}".'})
+            
             messages.success(request, f'Evidencia agregada exitosamente a la fase "{phase.phase_name}".')
             return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
         except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': f'Error al agregar la evidencia: {str(e)}'}, status=500)
             messages.error(request, f'Error al agregar la evidencia: {str(e)}')
 
     return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
@@ -1619,14 +1640,19 @@ def phase_evidence_edit(request, project_id, phase_id, evidence_id):
             # Eliminar fotos marcadas para borrar
             photos_to_delete = request.POST.getlist('photos_to_delete')
             print(f"DEBUG: Fotos a eliminar: {photos_to_delete}")
+            print(f"DEBUG: Número de fotos a eliminar: {len(photos_to_delete)}")
             for photo_id in photos_to_delete:
                 try:
                     photo = PhaseEvidencePhoto.objects.get(id=photo_id, phase_evidence=evidence)
+                    print(f"DEBUG: Procesando foto ID {photo_id}, URL: {photo.photo_url}")
                     # Eliminar el archivo físico
                     file_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
+                    print(f"DEBUG: Ruta completa del archivo: {file_path}")
                     if os.path.exists(file_path):
                         os.remove(file_path)
-                        print(f"DEBUG: Archivo eliminado: {photo.photo_url}")
+                        print(f"DEBUG: Archivo eliminado exitosamente: {photo.photo_url}")
+                    else:
+                        print(f"DEBUG: Archivo no existe: {file_path}")
                     photo.delete()
                     print(f"DEBUG: Foto {photo_id} eliminada de la BD")
                 except PhaseEvidencePhoto.DoesNotExist:
@@ -1643,6 +1669,12 @@ def phase_evidence_edit(request, project_id, phase_id, evidence_id):
                 except PhaseEvidencePhoto.DoesNotExist:
                     pass
 
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Evidencia actualizada exitosamente.'
+                })
+
             messages.success(request, f'Evidencia actualizada exitosamente.')
             return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
 
@@ -1650,6 +1682,10 @@ def phase_evidence_edit(request, project_id, phase_id, evidence_id):
             print(f"DEBUG: Error al actualizar evidencia: {str(e)}")
             import traceback
             traceback.print_exc()
+
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': f'Error al actualizar la evidencia: {str(e)}'}, status=500)
+
             messages.error(request, f'Error al actualizar la evidencia: {str(e)}')
 
     return redirect('phase_detail', project_id=project_id, phase_id=phase_id)
