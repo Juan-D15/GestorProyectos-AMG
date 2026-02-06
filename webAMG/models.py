@@ -123,6 +123,18 @@ class EconomicStatus(models.TextChoices):
     CARGO_COMUNITARIO = 'cargo_comunitario', 'Cargo Comunitario'
 
 
+class InvoiceType(models.TextChoices):
+    FACTURA = 'factura', 'Factura'
+    RECIBO = 'recibo', 'Recibo'
+    NOTA_DEBITO = 'nota_debito', 'Nota de Débito'
+    NOTA_CREDITO = 'nota_credito', 'Nota de Crédito'
+    ORDEN_COMPRA = 'orden_compra', 'Orden de Compra'
+    COMPROBANTE_PAGO = 'comprobante_pago', 'Comprobante de Pago'
+    CHEQUE = 'cheque', 'Cheque'
+    TRANSFERENCIA = 'transferencia', 'Transferencia'
+    OTRO = 'otro', 'Otro'
+
+
 # =====================================================
 # MODELO DE USUARIO PERSONALIZADO
 # =====================================================
@@ -224,6 +236,41 @@ class User(models.Model):
 # MODELO DE LOGIN LOG
 # =====================================================
 
+# =====================================================
+# MODELO DE AUDITORÍA
+# =====================================================
+
+class AuditLog(models.Model):
+    """
+    Registro de auditoría de todas las operaciones en la base de datos.
+    """
+    table_name = models.CharField(max_length=100, db_index=True)
+    operation = models.CharField(max_length=10, db_index=True)
+    old_data = models.JSONField(blank=True, null=True)
+    new_data = models.JSONField(blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='user_id')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    performed_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'audit_log'
+        verbose_name = 'Log de Auditoría'
+        verbose_name_plural = 'Logs de Auditoría'
+        indexes = [
+            models.Index(fields=['table_name']),
+            models.Index(fields=['operation']),
+            models.Index(fields=['user']),
+            models.Index(fields=['performed_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.operation} on {self.table_name} at {self.performed_at}"
+
+
+# =====================================================
+# MODELO DE LOGIN LOG
+# =====================================================
+
 class LoginLog(models.Model):
     """
     Registro de intentos de inicio de sesión.
@@ -300,12 +347,15 @@ class Project(models.Model):
     what_is_done = models.TextField(blank=True, null=True)
     start_date = models.DateField()
     end_date = models.DateField(blank=True, null=True)
+    actual_end_date = models.DateField(blank=True, null=True)
     estimated_budget = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
     actual_budget = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
     cover_image_url = models.TextField(blank=True, null=True)
     location = models.CharField(max_length=200, blank=True, null=True)
-    municipality = models.CharField(max_length=100, blank=True, null=True)
     department = models.CharField(max_length=100, blank=True, null=True)
+    municipality = models.CharField(max_length=100, blank=True, null=True)
+    community = models.CharField(max_length=150, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
     status = models.CharField(
         max_length=20,
         choices=ProjectStatus.choices,
@@ -313,6 +363,7 @@ class Project(models.Model):
     )
     has_phases = models.BooleanField(default=False)
     progress_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    is_active = models.BooleanField(default=True)
     beneficiaries = models.ManyToManyField(
         'Beneficiary',
         blank=True,
@@ -322,6 +373,7 @@ class Project(models.Model):
     )
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_projects', db_column='created_by')
     responsible_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='responsible_projects', db_column='responsible_user')
+    notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -337,6 +389,7 @@ class Project(models.Model):
             models.Index(fields=['responsible_user']),
             models.Index(fields=['municipality']),
             models.Index(fields=['department']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
@@ -392,8 +445,9 @@ class ProjectBeneficiary(models.Model):
     id = models.AutoField(primary_key=True)
     project = models.ForeignKey('Project', on_delete=models.CASCADE, db_column='project_id')
     beneficiary = models.ForeignKey('Beneficiary', on_delete=models.CASCADE, db_column='beneficiary_id')
-    assigned_date = models.DateTimeField(auto_now_add=True)
+    assigned_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
 
     class Meta:
@@ -404,7 +458,8 @@ class ProjectBeneficiary(models.Model):
         indexes = [
             models.Index(fields=['project']),
             models.Index(fields=['beneficiary']),
-            models.Index(fields=['assigned_date']),
+            models.Index(fields=['assigned_at']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
@@ -432,6 +487,7 @@ class Beneficiary(models.Model):
     birth_date = models.DateField(blank=True, null=True)
     age = models.IntegerField(blank=True, null=True)
     cui_dpi = models.CharField(max_length=20, blank=True, null=True)
+    dpi_image_url = models.TextField(blank=True, null=True)
     gender = models.CharField(max_length=20, blank=True, null=True)
     civil_status = models.CharField(max_length=20, choices=CivilStatus.choices, blank=True, null=True)
     ethnicity = models.CharField(max_length=20, choices=Ethnicity.choices, blank=True, null=True)
@@ -443,9 +499,13 @@ class Beneficiary(models.Model):
     male_members = models.IntegerField(default=0)
     female_members = models.IntegerField(default=0)
     
-    # Otros datos
-    profile_image_url = models.TextField(blank=True, null=True)
-    observations = models.TextField(blank=True, null=True)
+    # Contacto
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    mobile_phone = models.CharField(max_length=20, blank=True, null=True)
+    email = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Control
+    notes = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -476,6 +536,176 @@ class Beneficiary(models.Model):
 
 
 # =====================================================
+# MODELO DE SALUD DE BENEFICIARIOS
+# =====================================================
+
+class BeneficiaryHealth(models.Model):
+    """
+    Información de salud de beneficiarios.
+    """
+    beneficiary = models.OneToOneField(Beneficiary, on_delete=models.CASCADE, db_column='beneficiary_id', primary_key=True, related_name='health')
+    
+    # Maternidad
+    is_pregnant = models.BooleanField(default=False)
+    is_breastfeeding = models.BooleanField(default=False)
+    
+    # Enfermedades crónicas
+    has_diabetes = models.BooleanField(default=False)
+    has_high_blood_pressure = models.BooleanField(default=False)
+    has_low_blood_pressure = models.BooleanField(default=False)
+    has_heart_disease = models.BooleanField(default=False)
+    has_kidney_disease = models.BooleanField(default=False)
+    has_cancer = models.BooleanField(default=False)
+    has_respiratory_disease = models.BooleanField(default=False)
+    
+    # Discapacidades
+    has_language_disability = models.BooleanField(default=False)
+    has_hearing_disability = models.BooleanField(default=False)
+    has_visual_disability = models.BooleanField(default=False)
+    has_physical_disability = models.BooleanField(default=False)
+    has_intellectual_disability = models.BooleanField(default=False)
+    has_psychosocial_disability = models.BooleanField(default=False)
+    
+    health_notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'beneficiary_health'
+        verbose_name = 'Salud de Beneficiario'
+        verbose_name_plural = 'Salud de Beneficiarios'
+        indexes = [
+            models.Index(fields=['beneficiary']),
+        ]
+
+
+# =====================================================
+# MODELO DE EDUCACIÓN DE BENEFICIARIOS
+# =====================================================
+
+class BeneficiaryEducation(models.Model):
+    """
+    Información educativa de beneficiarios.
+    """
+    beneficiary = models.OneToOneField(Beneficiary, on_delete=models.CASCADE, db_column='beneficiary_id', primary_key=True, related_name='education')
+    
+    education_level = models.CharField(max_length=20, choices=EducationLevel.choices, blank=True, null=True)
+    school_attendance = models.CharField(max_length=20, choices=SchoolAttendance.choices, blank=True, null=True)
+    education_language = models.CharField(max_length=20, choices=EducationLanguage.choices, blank=True, null=True)
+    can_read_write = models.BooleanField(blank=True, null=True)
+    years_of_study = models.IntegerField(default=0)
+    current_grade = models.CharField(max_length=50, blank=True, null=True)
+    school_name = models.CharField(max_length=200, blank=True, null=True)
+    
+    # Tecnología
+    has_cellphone = models.BooleanField(default=False)
+    has_computer = models.BooleanField(default=False)
+    has_internet = models.BooleanField(default=False)
+    
+    education_notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'beneficiary_education'
+        verbose_name = 'Educación de Beneficiario'
+        verbose_name_plural = 'Educación de Beneficiarios'
+        indexes = [
+            models.Index(fields=['beneficiary']),
+        ]
+
+
+# =====================================================
+# MODELO DE VIVIENDA DE BENEFICIARIOS
+# =====================================================
+
+class BeneficiaryHousing(models.Model):
+    """
+    Información de vivienda de beneficiarios.
+    """
+    beneficiary = models.OneToOneField(Beneficiary, on_delete=models.CASCADE, db_column='beneficiary_id', primary_key=True, related_name='housing')
+    
+    housing_tenure = models.CharField(max_length=20, choices=HousingTenure.choices, blank=True, null=True)
+    housing_type = models.CharField(max_length=20, choices=HousingType.choices, blank=True, null=True)
+    number_of_rooms = models.IntegerField(blank=True, null=True)
+    
+    # Materiales
+    floor_material = models.CharField(max_length=100, blank=True, null=True)
+    wall_material = models.CharField(max_length=100, blank=True, null=True)
+    roof_material = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Servicios básicos
+    has_electricity = models.BooleanField(default=False)
+    has_piped_water = models.BooleanField(default=False)
+    has_sewage = models.BooleanField(default=False)
+    
+    # Agua
+    water_source = models.CharField(max_length=100, blank=True, null=True)
+    drinking_water_source = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Saneamiento
+    toilet_type = models.CharField(max_length=100, blank=True, null=True)
+    waste_disposal = models.CharField(max_length=100, blank=True, null=True)
+    
+    housing_notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'beneficiary_housing'
+        verbose_name = 'Vivienda de Beneficiario'
+        verbose_name_plural = 'Vivienda de Beneficiarios'
+        indexes = [
+            models.Index(fields=['beneficiary']),
+        ]
+
+
+# =====================================================
+# MODELO DE ECONOMÍA DE BENEFICIARIOS
+# =====================================================
+
+class BeneficiaryEconomy(models.Model):
+    """
+    Información económica de beneficiarios.
+    """
+    beneficiary = models.OneToOneField(Beneficiary, on_delete=models.CASCADE, db_column='beneficiary_id', primary_key=True, related_name='economy')
+    
+    # Actividades económicas
+    economically_active_employed = models.BooleanField(default=False)
+    economically_active_independent = models.BooleanField(default=False)
+    economically_active_entrepreneur = models.BooleanField(default=False)
+    economically_active_day_laborer = models.BooleanField(default=False)
+    homemaker = models.BooleanField(default=False)
+    unemployed = models.BooleanField(default=False)
+    job_seeker = models.BooleanField(default=False)
+    student_only = models.BooleanField(default=False)
+    pensioner_rentier = models.BooleanField(default=False)
+    retired = models.BooleanField(default=False)
+    caregiver = models.BooleanField(default=False)
+    community_position = models.BooleanField(default=False)
+    
+    # Ingresos y ayudas
+    monthly_income = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    receives_social_aid = models.BooleanField(default=False)
+    social_aid_type = models.CharField(max_length=200, blank=True, null=True)
+    
+    occupation = models.CharField(max_length=150, blank=True, null=True)
+    workplace = models.CharField(max_length=200, blank=True, null=True)
+    
+    economy_notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'beneficiary_economy'
+        verbose_name = 'Economía de Beneficiario'
+        verbose_name_plural = 'Economía de Beneficiarios'
+        indexes = [
+            models.Index(fields=['beneficiary']),
+        ]
+
+
+# =====================================================
 # MODELO DE FASES DE PROYECTOS
 # =====================================================
 
@@ -487,16 +717,18 @@ class ProjectPhase(models.Model):
     phase_name = models.CharField(max_length=200)
     phase_number = models.IntegerField()
     description = models.TextField(blank=True, null=True)
-    objectives = models.TextField(blank=True, null=True)
     start_date = models.DateField()
     end_date = models.DateField(blank=True, null=True)
-    budget = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
+    actual_end_date = models.DateField(blank=True, null=True)
+    estimated_budget = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
+    actual_budget = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
     status = models.CharField(
         max_length=20,
         choices=PhaseStatus.choices,
         default=PhaseStatus.PENDIENTE
     )
     progress_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -510,6 +742,7 @@ class ProjectPhase(models.Model):
             models.Index(fields=['status']),
             models.Index(fields=['start_date', 'end_date']),
             models.Index(fields=['project', 'phase_number']),
+            models.Index(fields=['is_active']),
         ]
         unique_together = ['project', 'phase_number']
 
@@ -532,7 +765,8 @@ class DailyActivity(models.Model):
     description = models.TextField()
     participants_count = models.IntegerField(blank=True, null=True)
     location = models.CharField(max_length=200, blank=True, null=True)
-    observations = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -547,10 +781,41 @@ class DailyActivity(models.Model):
             models.Index(fields=['activity_date']),
             models.Index(fields=['activity_type']),
             models.Index(fields=['created_by']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
         return f"{self.activity_type} - {self.activity_date}"
+
+
+# =====================================================
+# MODELO DE FOTOS DE ACTIVIDADES
+# =====================================================
+
+class ActivityPhoto(models.Model):
+    """
+    Fotos de actividades diarias.
+    """
+    activity = models.ForeignKey(DailyActivity, on_delete=models.CASCADE, related_name='photos')
+    photo_url = models.TextField()
+    caption = models.TextField(blank=True, null=True)
+    photo_order = models.IntegerField(default=1)
+    is_active = models.BooleanField(default=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='uploaded_by')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'activity_photos'
+        verbose_name = 'Foto de Actividad'
+        verbose_name_plural = 'Fotos de Actividades'
+        indexes = [
+            models.Index(fields=['activity']),
+            models.Index(fields=['uploaded_by']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return f"Foto {self.photo_order} - {self.activity}"
 
 
 # =====================================================
@@ -559,12 +824,14 @@ class DailyActivity(models.Model):
 
 class ProjectEvidence(models.Model):
     """
-    Evidencias de proyectos con rangos de fechas, descripción y fotos.
+    Evidencias de proyectos con rangos de fechas, descripción, fotos y checklist de requerimientos.
     """
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='evidences')
     start_date = models.DateField()
     end_date = models.DateField()
     description = models.TextField()
+    requirements = models.JSONField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -577,6 +844,7 @@ class ProjectEvidence(models.Model):
             models.Index(fields=['project']),
             models.Index(fields=['start_date', 'end_date']),
             models.Index(fields=['created_by']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
@@ -596,6 +864,7 @@ class EvidencePhoto(models.Model):
     photo_url = models.TextField()
     caption = models.TextField(blank=True, null=True)
     photo_order = models.IntegerField(default=1)
+    is_active = models.BooleanField(default=True)
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='uploaded_by')
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
@@ -607,6 +876,7 @@ class EvidencePhoto(models.Model):
             models.Index(fields=['evidence']),
             models.Index(fields=['uploaded_by']),
             models.Index(fields=['uploaded_at']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
@@ -625,6 +895,7 @@ class EvidenceBeneficiary(models.Model):
     beneficiary = models.ForeignKey(Beneficiary, on_delete=models.CASCADE, related_name='evidence_participations')
     assigned_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'evidence_beneficiaries'
@@ -634,6 +905,7 @@ class EvidenceBeneficiary(models.Model):
             models.Index(fields=['evidence']),
             models.Index(fields=['beneficiary']),
             models.Index(fields=['assigned_at']),
+            models.Index(fields=['is_active']),
         ]
         unique_together = ['evidence', 'beneficiary']
 
@@ -651,8 +923,9 @@ class PhaseBeneficiary(models.Model):
     """
     phase = models.ForeignKey(ProjectPhase, on_delete=models.CASCADE, related_name='beneficiaries')
     beneficiary = models.ForeignKey(Beneficiary, on_delete=models.CASCADE, related_name='phase_participations')
-    assigned_date = models.DateTimeField(auto_now_add=True)
+    assigned_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
 
     class Meta:
@@ -662,7 +935,8 @@ class PhaseBeneficiary(models.Model):
         indexes = [
             models.Index(fields=['phase']),
             models.Index(fields=['beneficiary']),
-            models.Index(fields=['assigned_date']),
+            models.Index(fields=['assigned_at']),
+            models.Index(fields=['is_active']),
         ]
         unique_together = ['phase', 'beneficiary']
 
@@ -676,12 +950,14 @@ class PhaseBeneficiary(models.Model):
 
 class PhaseEvidence(models.Model):
     """
-    Evidencias de fases de proyectos con rangos de fechas, descripción y fotos.
+    Evidencias de fases de proyectos con rangos de fechas, descripción, fotos y checklist de requerimientos.
     """
     phase = models.ForeignKey(ProjectPhase, on_delete=models.CASCADE, related_name='evidences')
     start_date = models.DateField()
     end_date = models.DateField()
     description = models.TextField()
+    requirements = models.JSONField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -694,6 +970,7 @@ class PhaseEvidence(models.Model):
             models.Index(fields=['phase']),
             models.Index(fields=['start_date', 'end_date']),
             models.Index(fields=['created_by']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
@@ -713,6 +990,7 @@ class PhaseEvidencePhoto(models.Model):
     photo_url = models.TextField()
     caption = models.TextField(blank=True, null=True)
     photo_order = models.IntegerField(default=1)
+    is_active = models.BooleanField(default=True)
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='uploaded_by')
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
@@ -724,6 +1002,7 @@ class PhaseEvidencePhoto(models.Model):
             models.Index(fields=['phase_evidence']),
             models.Index(fields=['uploaded_by']),
             models.Index(fields=['uploaded_at']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
@@ -738,6 +1017,7 @@ class PhaseEvidenceBeneficiary(models.Model):
     beneficiary = models.ForeignKey(Beneficiary, on_delete=models.CASCADE, related_name='phase_evidence_participations')
     assigned_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'phase_evidence_beneficiaries'
@@ -747,8 +1027,118 @@ class PhaseEvidenceBeneficiary(models.Model):
             models.Index(fields=['phase_evidence']),
             models.Index(fields=['beneficiary']),
             models.Index(fields=['assigned_at']),
+            models.Index(fields=['is_active']),
         ]
         unique_together = ['phase_evidence', 'beneficiary']
 
     def __str__(self):
         return f"{self.beneficiary.full_name} - {self.phase_evidence}"
+
+
+# =====================================================
+# MODELO DE MATERIALES DE PROYECTOS
+# =====================================================
+
+class ProjectMaterial(models.Model):
+    """
+    Materiales utilizados en proyectos.
+    """
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='materials')
+    material_name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit = models.CharField(max_length=50, blank=True, null=True)
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    total_cost = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
+    supplier = models.CharField(max_length=200, blank=True, null=True)
+    purchase_date = models.DateField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'project_materials'
+        verbose_name = 'Material de Proyecto'
+        verbose_name_plural = 'Materiales de Proyectos'
+        indexes = [
+            models.Index(fields=['project']),
+            models.Index(fields=['purchase_date']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.material_name} - {self.project.project_name}"
+
+
+# =====================================================
+# MODELO DE EJECUCIÓN PRESUPUESTARIA
+# =====================================================
+
+class BudgetExecution(models.Model):
+    """
+    Ejecución presupuestaria de proyectos y fases - Registro de gastos y facturas.
+    """
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True, related_name='budget_executions', db_column='project_id')
+    phase = models.ForeignKey(ProjectPhase, on_delete=models.CASCADE, null=True, blank=True, related_name='budget_executions', db_column='phase_id')
+    
+    # Información del documento
+    invoice_type = models.CharField(max_length=20, choices=InvoiceType.choices)
+    invoice_number = models.CharField(max_length=100, blank=True, null=True)
+    invoice_date = models.DateField()
+    invoice_name = models.CharField(max_length=200)
+    
+    # Montos
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=15, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=15, decimal_places=2)
+    tax_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    total_amount = models.DecimalField(max_digits=15, decimal_places=2)
+    
+    # Descripción y categoría
+    description = models.TextField()
+    category = models.CharField(max_length=100, blank=True, null=True)
+    supplier_name = models.CharField(max_length=200, blank=True, null=True)
+    
+    # Documentos adjuntos
+    invoice_document_url = models.TextField(blank=True, null=True)
+    additional_documents_urls = models.JSONField(blank=True, null=True)
+    
+    # Información de pago
+    payment_date = models.DateField(blank=True, null=True)
+    payment_method = models.CharField(max_length=100, blank=True, null=True)
+    payment_reference = models.CharField(max_length=100, blank=True, null=True)
+    is_paid = models.BooleanField(default=False)
+    
+    # Control y aprobación
+    notes = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='created_by', related_name='created_budget_executions')
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='approved_by', related_name='approved_budget_executions')
+    approval_date = models.DateTimeField(blank=True, null=True)
+    is_approved = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'budget_execution'
+        verbose_name = 'Ejecución Presupuestaria'
+        verbose_name_plural = 'Ejecuciones Presupuestarias'
+        indexes = [
+            models.Index(fields=['project']),
+            models.Index(fields=['phase']),
+            models.Index(fields=['invoice_type']),
+            models.Index(fields=['invoice_date']),
+            models.Index(fields=['invoice_number']),
+            models.Index(fields=['category']),
+            models.Index(fields=['is_paid']),
+            models.Index(fields=['is_approved']),
+            models.Index(fields=['is_active']),
+            models.Index(fields=['created_by']),
+            models.Index(fields=['approved_by']),
+        ]
+
+    def __str__(self):
+        return f"{self.invoice_name} - {self.invoice_date}"

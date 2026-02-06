@@ -7,6 +7,7 @@ from django.conf.urls.static import static
 from django.conf import settings
 from webAMG import views_pages
 from webAMG import views as api_views
+from webAMG.api import v1 as api_v1
 
 
 urlpatterns = [
@@ -63,6 +64,22 @@ urlpatterns = [
     
     # ReactPy-Django WebSocket routes
     path("reactpy/", include("reactpy_django.http.urls")),
+    
+    # API v1 - Endpoints versionados y seguros
+    path("api/v1/health/", api_v1.health_check, name="api_v1_health"),
+    path("api/v1/info/", api_v1.api_info, name="api_v1_info"),
+    path("api/v1/auth/login/", api_v1.login, name="api_v1_login"),
+    path("api/v1/auth/logout/", api_v1.logout, name="api_v1_logout"),
+    path("api/v1/auth/verify/", api_v1.verify_session, name="api_v1_verify"),
+    path("api/v1/auth/me/", api_v1.current_user, name="api_v1_current_user"),
+    path("api/v1/users/", api_v1.list_users, name="api_v1_list_users"),
+    path("api/v1/users/create/", api_v1.create_user, name="api_v1_create_user"),
+    path("api/v1/users/<int:user_id>/", api_v1.user_detail, name="api_v1_user_detail"),
+    path("api/v1/users/<int:user_id>/update/", api_v1.update_user, name="api_v1_update_user"),
+    path("api/v1/users/<int:user_id>/delete/", api_v1.delete_user, name="api_v1_delete_user"),
+    # Proyectos - Soft delete
+    path("api/v1/projects/<int:project_id>/deactivate/", api_v1.deactivate_project, name="api_v1_deactivate_project"),
+    path("api/v1/projects/<int:project_id>/activate/", api_v1.activate_project, name="api_v1_activate_project"),
 ]
 
 # Media files (User uploaded files) - Solo en desarrollo
