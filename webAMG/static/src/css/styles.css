@@ -46,6 +46,49 @@ svg.flex-shrink-0 {
   min-width: fit-content;
 }
 
+/* Font Awesome icons - asegurar que se muestren */
+i[class*='fa-'],
+i[class^='fa-'] {
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+}
+
+/* Asegurar visibilidad de iconos */
+.fas,
+.far,
+.fab,
+.fal {
+  font-family: 'Font Awesome 6 Free', 'Font Awesome 6 Pro', 'Font Awesome 6 Brands', 'Font Awesome 6 Duotone', sans-serif;
+  font-weight: 900;
+}
+
+/* Iconos sólidos */
+.fas {
+  font-family: 'Font Awesome 6 Free', 'Font Awesome 6 Pro', 'Font Awesome 6 Duotone', sans-serif;
+  font-weight: 900;
+}
+
+/* Iconos regulares */
+.far {
+  font-family: 'Font Awesome 6 Free', 'Font Awesome 6 Pro', 'Font Awesome 6 Duotone', sans-serif;
+  font-weight: 400;
+}
+
+/* Iconos de marcas */
+.fab {
+  font-family: 'Font Awesome 6 Brands', 'Font Awesome 6 Pro Brands', sans-serif;
+  font-weight: 400;
+}
+
+/* Iconos ligeros */
+.fal {
+  font-family: 'Font Awesome 6 Pro', 'Font Awesome 6 Duotone', sans-serif;
+  font-weight: 300;
+}
+
 /* Botón principal corporativo */
 .btn-primary-custom {
   background-color: var(--color-primary);

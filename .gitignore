@@ -8,6 +8,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.log
+logs/
 
 # Virtualenv (entorno virtual)
 .venv/
@@ -59,5 +60,6 @@ node_modules/
 /static/css/output.css
 /webAMG/static/dist/
 
-*.md
-BasedeDatos.txt
+#*.md
+#BasedeDatos.txt
+#ProcedimientosAlmacenados-DB.txt

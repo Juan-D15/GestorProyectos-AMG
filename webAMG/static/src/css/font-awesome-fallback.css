@@ -1,0 +1,262 @@
+/* Fallback para iconos si Font Awesome falla */
+/* Estos iconos se activan solo cuando Font Awesome no se carga */
+
+/* Iconos de autenticación y usuario */
+.fa-user::before,
+.fa-user-circle::before {
+    content: "👤";
+    font-size: 1.2em;
+}
+
+.fa-lock::before {
+    content: "🔒";
+    font-size: 1.2em;
+}
+
+.fa-eye::before {
+    content: "👁️";
+    font-size: 1.2em;
+}
+
+.fa-eye-slash::before {
+    content: "👁️‍🗨️";
+    font-size: 1.2em;
+}
+
+/* Iconos de navegación */
+.fa-home::before {
+    content: "🏠";
+    font-size: 1.2em;
+}
+
+.fa-arrow-left::before {
+    content: "←";
+    font-size: 1.2em;
+}
+
+.fa-arrow-right::before {
+    content: "→";
+    font-size: 1.2em;
+}
+
+.fa-arrow-up::before {
+    content: "↑";
+    font-size: 1.2em;
+}
+
+.fa-chevron-left::before {
+    content: "‹";
+    font-size: 1.4em;
+}
+
+.fa-chevron-right::before {
+    content: "›";
+    font-size: 1.4em;
+}
+
+.fa-sign-out-alt::before {
+    content: "🚪";
+    font-size: 1.2em;
+}
+
+/* Iconos de notificaciones y alertas */
+.fa-bell::before {
+    content: "🔔";
+    font-size: 1.2em;
+}
+
+.fa-exclamation-circle::before {
+    content: "⚠️";
+    font-size: 1.2em;
+}
+
+.fa-exclamation-triangle::before {
+    content: "⚠️";
+    font-size: 1.2em;
+}
+
+.fa-info-circle::before {
+    content: "ℹ️";
+    font-size: 1.2em;
+}
+
+.fa-check::before,
+.fa-check-circle::before {
+    content: "✅";
+    font-size: 1.2em;
+}
+
+.fa-times::before,
+.fa-times-circle::before {
+    content: "❌";
+    font-size: 1.2em;
+}
+
+/* Iconos de acciones */
+.fa-plus::before {
+    content: "➕";
+    font-size: 1.2em;
+}
+
+.fa-edit::before {
+    content: "✏️";
+    font-size: 1.2em;
+}
+
+.fa-trash::before,
+.fa-trash-alt::before {
+    content: "🗑️";
+    font-size: 1.2em;
+}
+
+.fa-save::before {
+    content: "💾";
+    font-size: 1.2em;
+}
+
+.fa-download::before {
+    content: "⬇️";
+    font-size: 1.2em;
+}
+
+.fa-upload::before,
+.fa-cloud-upload-alt::before {
+    content: "⬆️";
+    font-size: 1.2em;
+}
+
+/* Iconos de datos y visualización */
+.fa-chart-bar::before {
+    content: "📊";
+    font-size: 1.2em;
+}
+
+.fa-chart-line::before {
+    content: "📈";
+    font-size: 1.2em;
+}
+
+.fa-calendar::before,
+.fa-calendar-alt::before {
+    content: "📅";
+    font-size: 1.2em;
+}
+
+.fa-clock::before {
+    content: "🕐";
+    font-size: 1.2em;
+}
+
+.fa-envelope::before {
+    content: "📧";
+    font-size: 1.2em;
+}
+
+.fa-phone::before {
+    content: "📞";
+    font-size: 1.2em;
+}
+
+.fa-map-marker-alt::before,
+.fa-map-marker::before {
+    content: "📍";
+    font-size: 1.2em;
+}
+
+.fa-search::before {
+    content: "🔍";
+    font-size: 1.2em;
+}
+
+/* Iconos de archivos y carpetas */
+.fa-folder::before {
+    content: "📁";
+    font-size: 1.2em;
+}
+
+.fa-file::before {
+    content: "📄";
+    font-size: 1.2em;
+}
+
+.fa-file-pdf::before {
+    content: "📄";
+    font-size: 1.2em;
+}
+
+.fa-image::before {
+    content: "🖼️";
+    font-size: 1.2em;
+}
+
+/* Iconos de configuración */
+.fa-cog::before,
+.fa-cogs::before {
+    content: "⚙️";
+    font-size: 1.2em;
+}
+
+.fa-sync::before {
+    content: "🔄";
+    font-size: 1.2em;
+}
+
+/* Iconos de proyecto */
+.fa-building::before {
+    content: "🏢";
+    font-size: 1.2em;
+}
+
+.fa-users::before {
+    content: "👥";
+    font-size: 1.2em;
+}
+
+.fa-project-diagram::before {
+    content: "📋";
+    font-size: 1.2em;
+}
+
+/* Iconos de dinero */
+.fa-dollar-sign::before,
+.fa-dollar-sign::before {
+    content: "$";
+    font-size: 1.2em;
+}
+
+/* Iconos misceláneos */
+.fa-filter::before {
+    content: "🔎";
+    font-size: 1.2em;
+}
+
+.fa-ellipsis-v::before {
+    content: "⋮";
+    font-size: 1.4em;
+}
+
+.fa-ellipsis-h::before {
+    content: "⋯";
+    font-size: 1.4em;
+}
+
+.fa-print::before {
+    content: "🖨️";
+    font-size: 1.2em;
+}
+
+.fa-link::before {
+    content: "🔗";
+    font-size: 1.2em;
+}
+
+.fa-external-link-alt::before {
+    content: "↗️";
+    font-size: 1.2em;
+}
+
+/* Asegurar que los iconos fallback solo se muestren cuando Font Awesome no se cargó */
+/* Esto se maneja mediante JavaScript en base.html */
+.font-awesome-fallback-active i[class*='fa-']::before {
+    display: inline-block !important;
+}

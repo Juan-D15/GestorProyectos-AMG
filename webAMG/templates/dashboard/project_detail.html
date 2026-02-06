@@ -3,8 +3,8 @@
 {% load webAMG_extras %}
  
 {% block active_projects_class %}bg-[#8a4534]/10 text-[#8a4534]{% endblock %}
-{% block page_title %}Editar Proyecto{% endblock %}
-{% block page_subtitle %}Editar Proyecto{% endblock %} 
+{% block page_title %}{{ project.project_name }}{% endblock %}
+{% block page_subtitle %}Proyecto{% endblock %} 
 
 {% block extra_js %}
 {{ block.super }}

@@ -1,0 +1,1457 @@
+-- =====================================================
+-- SISTEMA DE GESTIÓN DE PROYECTOS - MAYA GUATEMALA
+-- Base de Datos PostgreSQL Completa y Normalizada
+-- Zona Horaria: America/Guatemala (GMT-6)
+-- Versión: 2.0 - Con Evidencias, Ejecución Presupuestaria y Mejoras
+-- =====================================================
+
+-- Configurar zona horaria
+SET TIME ZONE 'America/Guatemala';
+
+-- Habilitar extensiones necesarias
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- =====================================================
+-- FUNCIONES DE AUDITORÍA Y UTILIDADES
+-- =====================================================
+
+-- Función para actualizar timestamp de modificación
+CREATE OR REPLACE FUNCTION update_modified_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Función para auditoría general
+CREATE OR REPLACE FUNCTION audit_trigger_function()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (
+            table_name,
+            operation,
+            old_data,
+            user_id,
+            ip_address,
+            performed_at
+        ) VALUES (
+            TG_TABLE_NAME,
+            TG_OP,
+            row_to_json(OLD),
+            COALESCE(current_setting('app.current_user_id', TRUE)::INTEGER, NULL),
+            CASE 
+                WHEN current_setting('app.client_ip', TRUE) IS NOT NULL 
+                THEN current_setting('app.client_ip', TRUE)::INET
+                ELSE NULL
+            END,
+            CURRENT_TIMESTAMP
+        );
+        RETURN OLD;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (
+            table_name,
+            operation,
+            old_data,
+            new_data,
+            user_id,
+            ip_address,
+            performed_at
+        ) VALUES (
+            TG_TABLE_NAME,
+            TG_OP,
+            row_to_json(OLD),
+            row_to_json(NEW),
+            COALESCE(current_setting('app.current_user_id', TRUE)::INTEGER, NULL),
+            CASE 
+                WHEN current_setting('app.client_ip', TRUE) IS NOT NULL 
+                THEN current_setting('app.client_ip', TRUE)::INET
+                ELSE NULL
+            END,
+            CURRENT_TIMESTAMP
+        );
+        RETURN NEW;
+    ELSIF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (
+            table_name,
+            operation,
+            new_data,
+            user_id,
+            ip_address,
+            performed_at
+        ) VALUES (
+            TG_TABLE_NAME,
+            TG_OP,
+            row_to_json(NEW),
+            COALESCE(current_setting('app.current_user_id', TRUE)::INTEGER, NULL),
+            CASE 
+                WHEN current_setting('app.client_ip', TRUE) IS NOT NULL 
+                THEN current_setting('app.client_ip', TRUE)::INET
+                ELSE NULL
+            END,
+            CURRENT_TIMESTAMP
+        );
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- TIPOS ENUMERADOS
+-- =====================================================
+
+-- Roles de usuario
+CREATE TYPE user_role AS ENUM ('administrador', 'usuario');
+
+-- Estados de proyectos
+CREATE TYPE project_status AS ENUM ('planificado', 'en_progreso', 'pausado', 'completado', 'cancelado');
+
+-- Estados de fases
+CREATE TYPE phase_status AS ENUM ('pendiente', 'en_progreso', 'completada', 'cancelada');
+
+-- Tipos de actividades diarias
+CREATE TYPE activity_type AS ENUM (
+    'entrega',
+    'capacitacion',
+    'instalacion',
+    'visita',
+    'reunion',
+    'seguimiento',
+    'mantenimiento',
+    'evaluacion',
+    'otro'
+);
+
+-- Estado civil
+CREATE TYPE civil_status AS ENUM ('soltero', 'casado', 'unido', 'separado', 'divorciado', 'viudo');
+
+-- Pueblo de pertenencia
+CREATE TYPE ethnicity AS ENUM ('maya', 'garifuna', 'xinca', 'afrodescendiente', 'mestizo', 'extranjero');
+
+-- Tipología del hogar
+CREATE TYPE household_type AS ENUM ('unipersonal_nuclear', 'extensa', 'compuesta', 'co_residentes');
+
+-- Nivel educativo
+CREATE TYPE education_level AS ENUM ('ninguno', 'primaria', 'basico', 'diversificado', 'universitario', 'otro');
+
+-- Asistencia escolar
+CREATE TYPE school_attendance AS ENUM ('si', 'no', 'a_veces');
+
+-- Idiomas de educación
+CREATE TYPE education_language AS ENUM ('espanol', 'materno', 'ambos', 'otro');
+
+-- Tenencia de vivienda
+CREATE TYPE housing_tenure AS ENUM ('propia', 'alquilada', 'cedida_prestada', 'propiedad_comunal', 'otra');
+
+-- Tipo de vivienda
+CREATE TYPE housing_type AS ENUM (
+    'casa_formal', 
+    'apartamento', 
+    'cuarto_vecindad', 
+    'rancho', 
+    'improvisada', 
+    'colectiva_temporal',
+    'otra'
+);
+
+-- Status económico
+CREATE TYPE economic_status AS ENUM (
+    'empleado', 
+    'independiente', 
+    'emprendedor', 
+    'ama_casa', 
+    'jornalero',
+    'desempleado', 
+    'aspirante',
+    'solo_estudio',
+    'rentista',
+    'jubilado',
+    'cuidado_personas',
+    'cargo_comunitario'
+);
+
+-- Tipo de documento/factura para ejecución presupuestaria
+CREATE TYPE invoice_type AS ENUM (
+    'factura',
+    'recibo',
+    'nota_debito',
+    'nota_credito',
+    'orden_compra',
+    'comprobante_pago',
+    'cheque',
+    'transferencia',
+    'otro'
+);
+
+-- =====================================================
+-- TABLA DE USUARIOS
+-- =====================================================
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    full_name VARCHAR(150) NOT NULL,
+    role user_role NOT NULL DEFAULT 'usuario',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login TIMESTAMP WITH TIME ZONE,
+    profile_image_url TEXT,
+    phone VARCHAR(20),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_username_length CHECK (LENGTH(username) >= 3),
+    CONSTRAINT check_email_format CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$')
+);
+
+-- Índices para usuarios
+CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_is_active ON users(is_active);
+CREATE INDEX idx_users_created_at ON users(created_at);
+
+-- Triggers para usuarios
+CREATE TRIGGER update_users_timestamp
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION update_modified_timestamp();
+
+CREATE TRIGGER audit_users
+    AFTER INSERT OR UPDATE OR DELETE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION audit_trigger_function();
+
+-- Comentarios
+COMMENT ON TABLE users IS 'Usuarios del sistema con autenticación encriptada';
+COMMENT ON COLUMN users.password_hash IS 'Contraseña encriptada con bcrypt';
+
+-- =====================================================
+-- TABLA PRINCIPAL DE BENEFICIARIOS (NORMALIZADA)
+-- =====================================================
+
+CREATE TABLE beneficiaries (
+    id SERIAL PRIMARY KEY,
+    
+    -- UBICACIÓN TERRITORIAL
+    department VARCHAR(100) NOT NULL,
+    municipality VARCHAR(100) NOT NULL,
+    address TEXT,
+    community VARCHAR(150),
+    
+    -- INFORMACIÓN GENERAL
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    birth_place VARCHAR(150),
+    birth_date DATE,
+    age INTEGER,
+    cui_dpi VARCHAR(20) UNIQUE,
+    dpi_image_url TEXT,  -- CAMBIADO: Imagen del DPI en lugar de profile_image_url
+    gender VARCHAR(20),
+    civil_status civil_status,
+    ethnicity ethnicity,
+    linguistic_community VARCHAR(100),
+    household_type household_type,
+    
+    -- HABITANTES DE LA VIVIENDA (totales)
+    total_household_members INTEGER DEFAULT 0,
+    male_members INTEGER DEFAULT 0,
+    female_members INTEGER DEFAULT 0,
+    
+    -- CONTACTO
+    phone VARCHAR(20),
+    mobile_phone VARCHAR(20),
+    email VARCHAR(100),
+    
+    -- CONTROL
+    notes TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_age CHECK (age >= 0 AND age <= 120),
+    CONSTRAINT check_household_members CHECK (total_household_members >= 0),
+    CONSTRAINT check_gender_members CHECK (male_members >= 0 AND female_members >= 0)
+);
+
+-- Índices para beneficiarios
+CREATE INDEX idx_beneficiaries_department ON beneficiaries(department);
+CREATE INDEX idx_beneficiaries_municipality ON beneficiaries(municipality);
+CREATE INDEX idx_beneficiaries_community ON beneficiaries(community);
+CREATE INDEX idx_beneficiaries_cui_dpi ON beneficiaries(cui_dpi);
+CREATE INDEX idx_beneficiaries_full_name ON beneficiaries(first_name, last_name);
+CREATE INDEX idx_beneficiaries_is_active ON beneficiaries(is_active);
+CREATE INDEX idx_beneficiaries_created_at ON beneficiaries(created_at);
+CREATE INDEX idx_beneficiaries_created_by ON beneficiaries(created_by);
+
+-- Triggers
+CREATE TRIGGER update_beneficiaries_timestamp
+    BEFORE UPDATE ON beneficiaries
+    FOR EACH ROW
+    EXECUTE FUNCTION update_modified_timestamp();
+
+CREATE TRIGGER audit_beneficiaries
+    AFTER INSERT OR UPDATE OR DELETE ON beneficiaries
+    FOR EACH ROW
+    EXECUTE FUNCTION audit_trigger_function();
+
+COMMENT ON TABLE beneficiaries IS 'Información principal de beneficiarios del programa';
+COMMENT ON COLUMN beneficiaries.dpi_image_url IS 'URL de la imagen del DPI del beneficiario';
+
+-- =====================================================
+-- TABLAS RELACIONADAS DE BENEFICIARIOS
+-- =====================================================
+
+-- SALUD
+CREATE TABLE beneficiary_health (
+    id SERIAL PRIMARY KEY,
+    beneficiary_id INTEGER UNIQUE NOT NULL REFERENCES beneficiaries(id) ON DELETE CASCADE,
+    
+    -- Maternidad
+    is_pregnant BOOLEAN DEFAULT FALSE,
+    is_breastfeeding BOOLEAN DEFAULT FALSE,
+    
+    -- Enfermedades crónicas
+    has_diabetes BOOLEAN DEFAULT FALSE,
+    has_high_blood_pressure BOOLEAN DEFAULT FALSE,
+    has_low_blood_pressure BOOLEAN DEFAULT FALSE,
+    has_heart_disease BOOLEAN DEFAULT FALSE,
+    has_kidney_disease BOOLEAN DEFAULT FALSE,
+    has_cancer BOOLEAN DEFAULT FALSE,
+    has_respiratory_disease BOOLEAN DEFAULT FALSE,
+    
+    -- Discapacidades
+    has_language_disability BOOLEAN DEFAULT FALSE,
+    has_hearing_disability BOOLEAN DEFAULT FALSE,
+    has_visual_disability BOOLEAN DEFAULT FALSE,
+    has_physical_disability BOOLEAN DEFAULT FALSE,
+    has_intellectual_disability BOOLEAN DEFAULT FALSE,
+    has_psychosocial_disability BOOLEAN DEFAULT FALSE,
+    
+    -- Otros
+    health_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_beneficiary_health_beneficiary ON beneficiary_health(beneficiary_id);
+CREATE TRIGGER update_health_timestamp BEFORE UPDATE ON beneficiary_health FOR EACH ROW EXECUTE FUNCTION update_modified_timestamp();
+CREATE TRIGGER audit_health AFTER INSERT OR UPDATE OR DELETE ON beneficiary_health FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE beneficiary_health IS 'Información de salud de beneficiarios';
+
+-- EDUCACIÓN
+CREATE TABLE beneficiary_education (
+    id SERIAL PRIMARY KEY,
+    beneficiary_id INTEGER UNIQUE NOT NULL REFERENCES beneficiaries(id) ON DELETE CASCADE,
+    
+    education_level education_level,
+    school_attendance school_attendance,
+    education_language education_language,
+    can_read_write BOOLEAN,
+    years_of_study INTEGER DEFAULT 0,
+    current_grade VARCHAR(50),
+    school_name VARCHAR(200),
+    
+    -- Tecnología
+    has_cellphone BOOLEAN DEFAULT FALSE,
+    has_computer BOOLEAN DEFAULT FALSE,
+    has_internet BOOLEAN DEFAULT FALSE,
+    
+    education_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_years_of_study CHECK (years_of_study >= 0 AND years_of_study <= 30)
+);
+
+CREATE INDEX idx_beneficiary_education_beneficiary ON beneficiary_education(beneficiary_id);
+CREATE TRIGGER update_education_timestamp BEFORE UPDATE ON beneficiary_education FOR EACH ROW EXECUTE FUNCTION update_modified_timestamp();
+CREATE TRIGGER audit_education AFTER INSERT OR UPDATE OR DELETE ON beneficiary_education FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE beneficiary_education IS 'Información educativa de beneficiarios';
+
+-- VIVIENDA
+CREATE TABLE beneficiary_housing (
+    id SERIAL PRIMARY KEY,
+    beneficiary_id INTEGER UNIQUE NOT NULL REFERENCES beneficiaries(id) ON DELETE CASCADE,
+    
+    housing_tenure housing_tenure,
+    housing_type housing_type,
+    number_of_rooms INTEGER,
+    
+    -- Materiales
+    floor_material VARCHAR(100),
+    wall_material VARCHAR(100),
+    roof_material VARCHAR(100),
+    
+    -- Servicios básicos
+    has_electricity BOOLEAN DEFAULT FALSE,
+    has_piped_water BOOLEAN DEFAULT FALSE,
+    has_sewage BOOLEAN DEFAULT FALSE,
+    
+    -- Agua
+    water_source VARCHAR(100),
+    drinking_water_source VARCHAR(100),
+    
+    -- Saneamiento
+    toilet_type VARCHAR(100),
+    waste_disposal VARCHAR(100),
+    
+    housing_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_number_of_rooms CHECK (number_of_rooms > 0)
+);
+
+CREATE INDEX idx_beneficiary_housing_beneficiary ON beneficiary_housing(beneficiary_id);
+CREATE TRIGGER update_housing_timestamp BEFORE UPDATE ON beneficiary_housing FOR EACH ROW EXECUTE FUNCTION update_modified_timestamp();
+CREATE TRIGGER audit_housing AFTER INSERT OR UPDATE OR DELETE ON beneficiary_housing FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE beneficiary_housing IS 'Información de vivienda de beneficiarios';
+
+-- ECONOMÍA
+CREATE TABLE beneficiary_economy (
+    id SERIAL PRIMARY KEY,
+    beneficiary_id INTEGER UNIQUE NOT NULL REFERENCES beneficiaries(id) ON DELETE CASCADE,
+    
+    -- Actividades económicas
+    economically_active_employed BOOLEAN DEFAULT FALSE,
+    economically_active_independent BOOLEAN DEFAULT FALSE,
+    economically_active_entrepreneur BOOLEAN DEFAULT FALSE,
+    economically_active_day_laborer BOOLEAN DEFAULT FALSE,
+    homemaker BOOLEAN DEFAULT FALSE,
+    unemployed BOOLEAN DEFAULT FALSE,
+    job_seeker BOOLEAN DEFAULT FALSE,
+    student_only BOOLEAN DEFAULT FALSE,
+    pensioner_rentier BOOLEAN DEFAULT FALSE,
+    retired BOOLEAN DEFAULT FALSE,
+    caregiver BOOLEAN DEFAULT FALSE,
+    community_position BOOLEAN DEFAULT FALSE,
+    
+    -- Ingresos y ayudas
+    monthly_income DECIMAL(10, 2),
+    receives_social_aid BOOLEAN DEFAULT FALSE,
+    social_aid_type VARCHAR(200),
+    
+    occupation VARCHAR(150),
+    workplace VARCHAR(200),
+    
+    economy_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_monthly_income CHECK (monthly_income >= 0)
+);
+
+CREATE INDEX idx_beneficiary_economy_beneficiary ON beneficiary_economy(beneficiary_id);
+CREATE TRIGGER update_economy_timestamp BEFORE UPDATE ON beneficiary_economy FOR EACH ROW EXECUTE FUNCTION update_modified_timestamp();
+CREATE TRIGGER audit_economy AFTER INSERT OR UPDATE OR DELETE ON beneficiary_economy FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE beneficiary_economy IS 'Información económica de beneficiarios';
+
+-- =====================================================
+-- TABLA DE PROYECTOS
+-- =====================================================
+
+CREATE TABLE projects (
+    id SERIAL PRIMARY KEY,
+    project_name VARCHAR(250) NOT NULL,
+    project_code VARCHAR(50) UNIQUE,
+    description TEXT,
+    objectives TEXT,
+    what_is_done TEXT,
+    
+    -- Ubicación
+    location VARCHAR(200),
+    department VARCHAR(100),
+    municipality VARCHAR(100),
+    community VARCHAR(150),
+    address TEXT,
+    
+    -- Estado y fechas
+    status project_status DEFAULT 'planificado',
+    start_date DATE NOT NULL,
+    end_date DATE,
+    actual_end_date DATE,
+    
+    -- Presupuesto
+    estimated_budget DECIMAL(15, 2),
+    actual_budget DECIMAL(15, 2) DEFAULT 0.00,
+    
+    -- Progreso y fases
+    has_phases BOOLEAN DEFAULT FALSE,
+    progress_percentage DECIMAL(5, 2) DEFAULT 0.00,
+    
+    -- Imagen de portada
+    cover_image_url TEXT,
+    
+    -- Responsable
+    responsible_user INTEGER REFERENCES users(id),
+    
+    -- Control
+    notes TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_dates CHECK (end_date IS NULL OR end_date >= start_date),
+    CONSTRAINT check_progress CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
+    CONSTRAINT check_budgets CHECK (estimated_budget >= 0 AND actual_budget >= 0)
+);
+
+-- Índices
+CREATE INDEX idx_projects_code ON projects(project_code);
+CREATE INDEX idx_projects_status ON projects(status);
+CREATE INDEX idx_projects_department ON projects(department);
+CREATE INDEX idx_projects_municipality ON projects(municipality);
+CREATE INDEX idx_projects_responsible ON projects(responsible_user);
+CREATE INDEX idx_projects_dates ON projects(start_date, end_date);
+CREATE INDEX idx_projects_is_active ON projects(is_active);
+
+-- Triggers
+CREATE TRIGGER update_projects_timestamp
+    BEFORE UPDATE ON projects
+    FOR EACH ROW
+    EXECUTE FUNCTION update_modified_timestamp();
+
+CREATE TRIGGER audit_projects
+    AFTER INSERT OR UPDATE OR DELETE ON projects
+    FOR EACH ROW
+    EXECUTE FUNCTION audit_trigger_function();
+
+COMMENT ON TABLE projects IS 'Proyectos principales de la organización';
+COMMENT ON COLUMN projects.has_phases IS 'Indica si el proyecto tiene fases definidas';
+COMMENT ON COLUMN projects.cover_image_url IS 'URL de la imagen de portada del proyecto';
+COMMENT ON COLUMN projects.objectives IS 'Objetivos del proyecto';
+COMMENT ON COLUMN projects.what_is_done IS 'Descripción de lo que se hace en el proyecto';
+
+-- =====================================================
+-- TABLA DE FASES DE PROYECTOS
+-- =====================================================
+
+CREATE TABLE project_phases (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    phase_name VARCHAR(200) NOT NULL,
+    phase_number INTEGER NOT NULL,
+    description TEXT,
+    status phase_status DEFAULT 'pendiente',
+    
+    start_date DATE,
+    end_date DATE,
+    actual_end_date DATE,
+    
+    estimated_budget DECIMAL(15, 2),
+    actual_budget DECIMAL(15, 2) DEFAULT 0.00,
+    
+    progress_percentage DECIMAL(5, 2) DEFAULT 0.00,
+    
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_phase_dates CHECK (end_date >= start_date),
+    CONSTRAINT check_phase_progress CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
+    CONSTRAINT check_phase_budgets CHECK (estimated_budget >= 0 AND actual_budget >= 0),
+    CONSTRAINT unique_project_phase_number UNIQUE(project_id, phase_number)
+);
+
+-- Índices
+CREATE INDEX idx_phases_project ON project_phases(project_id);
+CREATE INDEX idx_phases_status ON project_phases(status);
+CREATE INDEX idx_phases_dates ON project_phases(start_date, end_date);
+
+-- Triggers
+CREATE TRIGGER update_phases_timestamp
+    BEFORE UPDATE ON project_phases
+    FOR EACH ROW
+    EXECUTE FUNCTION update_modified_timestamp();
+
+CREATE TRIGGER audit_phases
+    AFTER INSERT OR UPDATE OR DELETE ON project_phases
+    FOR EACH ROW
+    EXECUTE FUNCTION audit_trigger_function();
+
+COMMENT ON TABLE project_phases IS 'Fases de los proyectos';
+
+-- =====================================================
+-- TRIGGER PARA ACTUALIZAR has_phases AUTOMÁTICAMENTE
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION update_project_has_phases()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_phases_count INTEGER;
+    v_project_id INTEGER;
+BEGIN
+    -- Obtener el project_id
+    v_project_id := COALESCE(NEW.project_id, OLD.project_id);
+    
+    -- Contar las fases del proyecto
+    SELECT COUNT(*) INTO v_phases_count
+    FROM project_phases
+    WHERE project_id = v_project_id;
+    
+    -- Actualizar has_phases
+    UPDATE projects
+    SET has_phases = (v_phases_count > 0),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = v_project_id;
+    
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_has_phases_on_phase_change
+    AFTER INSERT OR DELETE ON project_phases
+    FOR EACH ROW
+    EXECUTE FUNCTION update_project_has_phases();
+
+COMMENT ON FUNCTION update_project_has_phases IS 'Actualiza automáticamente el campo has_phases cuando se agregan o eliminan fases';
+
+-- =====================================================
+-- RELACIÓN PROYECTOS-BENEFICIARIOS
+-- =====================================================
+
+CREATE TABLE project_beneficiaries (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    beneficiary_id INTEGER NOT NULL REFERENCES beneficiaries(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    assigned_by INTEGER REFERENCES users(id),
+    notes TEXT,
+    CONSTRAINT unique_project_beneficiary UNIQUE(project_id, beneficiary_id)
+);
+
+CREATE INDEX idx_project_beneficiaries_project ON project_beneficiaries(project_id);
+CREATE INDEX idx_project_beneficiaries_beneficiary ON project_beneficiaries(beneficiary_id);
+CREATE TRIGGER audit_project_beneficiaries AFTER INSERT OR UPDATE OR DELETE ON project_beneficiaries FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE project_beneficiaries IS 'Relación entre proyectos y beneficiarios';
+
+-- =====================================================
+-- RELACIÓN FASES-BENEFICIARIOS
+-- =====================================================
+
+CREATE TABLE phase_beneficiaries (
+    id SERIAL PRIMARY KEY,
+    phase_id INTEGER NOT NULL REFERENCES project_phases(id) ON DELETE CASCADE,
+    beneficiary_id INTEGER NOT NULL REFERENCES beneficiaries(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    assigned_by INTEGER REFERENCES users(id),
+    notes TEXT,
+    CONSTRAINT unique_phase_beneficiary UNIQUE(phase_id, beneficiary_id)
+);
+
+CREATE INDEX idx_phase_beneficiaries_phase ON phase_beneficiaries(phase_id);
+CREATE INDEX idx_phase_beneficiaries_beneficiary ON phase_beneficiaries(beneficiary_id);
+CREATE TRIGGER audit_phase_beneficiaries AFTER INSERT OR UPDATE OR DELETE ON phase_beneficiaries FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE phase_beneficiaries IS 'Relación entre fases y beneficiarios';
+
+-- =====================================================
+-- TABLA DE MATERIALES DE PROYECTOS
+-- =====================================================
+
+CREATE TABLE project_materials (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    material_name VARCHAR(200) NOT NULL,
+    description TEXT,
+    quantity DECIMAL(10, 2) NOT NULL,
+    unit VARCHAR(50),
+    unit_cost DECIMAL(10, 2),
+    total_cost DECIMAL(15, 2),
+    supplier VARCHAR(200),
+    purchase_date DATE,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_quantity CHECK (quantity > 0),
+    CONSTRAINT check_costs CHECK (unit_cost >= 0 AND total_cost >= 0)
+);
+
+CREATE INDEX idx_materials_project ON project_materials(project_id);
+CREATE INDEX idx_materials_purchase_date ON project_materials(purchase_date);
+CREATE TRIGGER update_materials_timestamp BEFORE UPDATE ON project_materials FOR EACH ROW EXECUTE FUNCTION update_modified_timestamp();
+CREATE TRIGGER audit_materials AFTER INSERT OR UPDATE OR DELETE ON project_materials FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE project_materials IS 'Materiales utilizados en proyectos';
+
+-- =====================================================
+-- TABLA DE ACTIVIDADES DIARIAS
+-- =====================================================
+
+CREATE TABLE daily_activities (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+    phase_id INTEGER REFERENCES project_phases(id) ON DELETE SET NULL,
+    activity_date DATE NOT NULL,
+    activity_type activity_type NOT NULL,
+    description TEXT NOT NULL,
+    participants_count INTEGER DEFAULT 0,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_project_or_phase CHECK (
+        (project_id IS NOT NULL AND phase_id IS NULL) OR
+        (project_id IS NULL AND phase_id IS NOT NULL)
+    ),
+    CONSTRAINT check_participants CHECK (participants_count >= 0)
+);
+
+CREATE INDEX idx_activities_project ON daily_activities(project_id);
+CREATE INDEX idx_activities_phase ON daily_activities(phase_id);
+CREATE INDEX idx_activities_date ON daily_activities(activity_date);
+CREATE INDEX idx_activities_type ON daily_activities(activity_type);
+CREATE TRIGGER update_activities_timestamp BEFORE UPDATE ON daily_activities FOR EACH ROW EXECUTE FUNCTION update_modified_timestamp();
+CREATE TRIGGER audit_activities AFTER INSERT OR UPDATE OR DELETE ON daily_activities FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE daily_activities IS 'Registro de actividades diarias de proyectos';
+
+-- =====================================================
+-- TABLA DE FOTOS DE ACTIVIDADES
+-- =====================================================
+
+CREATE TABLE activity_photos (
+    id SERIAL PRIMARY KEY,
+    activity_id INTEGER NOT NULL REFERENCES daily_activities(id) ON DELETE CASCADE,
+    photo_url TEXT NOT NULL,
+    caption TEXT,
+    photo_order INTEGER DEFAULT 1,
+    uploaded_by INTEGER REFERENCES users(id),
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_activity_photos_activity ON activity_photos(activity_id);
+CREATE INDEX idx_activity_photos_uploaded_by ON activity_photos(uploaded_by);
+CREATE TRIGGER audit_activity_photos AFTER INSERT OR UPDATE OR DELETE ON activity_photos FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE activity_photos IS 'Fotos de actividades diarias';
+
+-- =====================================================
+-- EVIDENCIAS DE PROYECTOS (CON REQUERIMIENTOS)
+-- =====================================================
+
+CREATE TABLE project_evidences (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    description TEXT NOT NULL,
+    requirements JSONB,  -- NUEVO: Checklist de requerimientos en formato JSON
+    
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_evidence_dates CHECK (end_date >= start_date)
+);
+
+CREATE INDEX idx_evidences_project ON project_evidences(project_id);
+CREATE INDEX idx_evidences_dates ON project_evidences(start_date, end_date);
+CREATE INDEX idx_evidences_created_by ON project_evidences(created_by);
+CREATE INDEX idx_evidences_requirements ON project_evidences USING GIN (requirements);
+
+CREATE TRIGGER update_evidences_timestamp BEFORE UPDATE ON project_evidences FOR EACH ROW EXECUTE FUNCTION update_modified_timestamp();
+CREATE TRIGGER audit_evidences AFTER INSERT OR UPDATE OR DELETE ON project_evidences FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+
+COMMENT ON TABLE project_evidences IS 'Evidencias de proyectos con rangos de fechas, descripción, fotos y checklist de requerimientos';
+COMMENT ON COLUMN project_evidences.requirements IS 'Checklist de requerimientos en formato JSON: [{"item": "descripción", "completed": true/false}]';
+
+-- =====================================================
+-- FOTOS DE EVIDENCIAS DE PROYECTOS
+-- =====================================================
+
+CREATE TABLE evidence_photos (
+    id SERIAL PRIMARY KEY,
+    evidence_id INTEGER NOT NULL REFERENCES project_evidences(id) ON DELETE CASCADE,
+    photo_url TEXT NOT NULL,
+    caption TEXT,
+    photo_order INTEGER DEFAULT 1,
+    uploaded_by INTEGER REFERENCES users(id),
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_evidence_photos_evidence ON evidence_photos(evidence_id);
+CREATE INDEX idx_evidence_photos_uploaded_by ON evidence_photos(uploaded_by);
+CREATE INDEX idx_evidence_photos_date ON evidence_photos(uploaded_at);
+
+CREATE TRIGGER audit_evidence_photos AFTER INSERT OR UPDATE OR DELETE ON evidence_photos FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE evidence_photos IS 'Fotos asociadas a las evidencias de proyectos';
+
+-- =====================================================
+-- RELACIÓN EVIDENCIAS-BENEFICIARIOS
+-- =====================================================
+
+CREATE TABLE evidence_beneficiaries (
+    id SERIAL PRIMARY KEY,
+    evidence_id INTEGER NOT NULL REFERENCES project_evidences(id) ON DELETE CASCADE,
+    beneficiary_id INTEGER NOT NULL REFERENCES beneficiaries(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    CONSTRAINT evidence_beneficiary_unique UNIQUE(evidence_id, beneficiary_id)
+);
+
+CREATE INDEX idx_evidence_beneficiaries_evidence ON evidence_beneficiaries(evidence_id);
+CREATE INDEX idx_evidence_beneficiaries_beneficiary ON evidence_beneficiaries(beneficiary_id);
+CREATE INDEX idx_evidence_beneficiaries_assigned_at ON evidence_beneficiaries(assigned_at);
+
+COMMENT ON TABLE evidence_beneficiaries IS 'Relación entre evidencias de proyectos y beneficiarios participantes';
+
+-- =====================================================
+-- EVIDENCIAS DE FASES (CON REQUERIMIENTOS)
+-- =====================================================
+
+CREATE TABLE phase_evidences (
+    id SERIAL PRIMARY KEY,
+    phase_id INTEGER NOT NULL REFERENCES project_phases(id) ON DELETE CASCADE,
+    
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    description TEXT NOT NULL,
+    requirements JSONB,  -- NUEVO: Checklist de requerimientos en formato JSON
+    
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_phase_evidence_dates CHECK (end_date >= start_date)
+);
+
+CREATE INDEX idx_phase_evidences_phase ON phase_evidences(phase_id);
+CREATE INDEX idx_phase_evidences_dates ON phase_evidences(start_date, end_date);
+CREATE INDEX idx_phase_evidences_created_by ON phase_evidences(created_by);
+CREATE INDEX idx_phase_evidences_requirements ON phase_evidences USING GIN (requirements);
+
+CREATE TRIGGER update_phase_evidences_timestamp BEFORE UPDATE ON phase_evidences FOR EACH ROW EXECUTE FUNCTION update_modified_timestamp();
+CREATE TRIGGER audit_phase_evidences AFTER INSERT OR UPDATE OR DELETE ON phase_evidences FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+
+COMMENT ON TABLE phase_evidences IS 'Evidencias de fases con rangos de fechas, descripción, fotos y checklist de requerimientos';
+COMMENT ON COLUMN phase_evidences.requirements IS 'Checklist de requerimientos en formato JSON: [{"item": "descripción", "completed": true/false}]';
+
+-- =====================================================
+-- FOTOS DE EVIDENCIAS DE FASES
+-- =====================================================
+
+CREATE TABLE phase_evidence_photos (
+    id SERIAL PRIMARY KEY,
+    phase_evidence_id INTEGER NOT NULL REFERENCES phase_evidences(id) ON DELETE CASCADE,
+    photo_url TEXT NOT NULL,
+    caption TEXT,
+    photo_order INTEGER DEFAULT 1,
+    uploaded_by INTEGER REFERENCES users(id),
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_phase_evidence_photos_evidence ON phase_evidence_photos(phase_evidence_id);
+CREATE INDEX idx_phase_evidence_photos_uploaded_by ON phase_evidence_photos(uploaded_by);
+CREATE INDEX idx_phase_evidence_photos_date ON phase_evidence_photos(uploaded_at);
+
+CREATE TRIGGER audit_phase_evidence_photos AFTER INSERT OR UPDATE OR DELETE ON phase_evidence_photos FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE phase_evidence_photos IS 'Fotos asociadas a las evidencias de fases';
+
+-- =====================================================
+-- RELACIÓN EVIDENCIAS DE FASES-BENEFICIARIOS
+-- =====================================================
+
+CREATE TABLE phase_evidence_beneficiaries (
+    id SERIAL PRIMARY KEY,
+    phase_evidence_id INTEGER NOT NULL REFERENCES phase_evidences(id) ON DELETE CASCADE,
+    beneficiary_id INTEGER NOT NULL REFERENCES beneficiaries(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    UNIQUE(phase_evidence_id, beneficiary_id)
+);
+
+CREATE INDEX idx_phase_evidence_beneficiaries_evidence ON phase_evidence_beneficiaries(phase_evidence_id);
+CREATE INDEX idx_phase_evidence_beneficiaries_beneficiary ON phase_evidence_beneficiaries(beneficiary_id);
+CREATE INDEX idx_phase_evidence_beneficiaries_assigned_at ON phase_evidence_beneficiaries(assigned_at);
+
+CREATE TRIGGER audit_phase_evidence_beneficiaries AFTER INSERT OR UPDATE OR DELETE ON phase_evidence_beneficiaries FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+COMMENT ON TABLE phase_evidence_beneficiaries IS 'Relación entre evidencias de fases y beneficiarios participantes';
+
+-- =====================================================
+-- EJECUCIÓN PRESUPUESTARIA (MEJORADA)
+-- =====================================================
+
+CREATE TABLE budget_execution (
+    id SERIAL PRIMARY KEY,
+    
+    -- Asignación flexible a proyecto o fase
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+    phase_id INTEGER REFERENCES project_phases(id) ON DELETE CASCADE,
+    
+    -- Información del documento
+    invoice_type invoice_type NOT NULL,
+    invoice_number VARCHAR(100),
+    invoice_date DATE NOT NULL,
+    invoice_name VARCHAR(200) NOT NULL,  -- NUEVO: Nombre de la factura
+    
+    -- Montos
+    quantity DECIMAL(10, 2) NOT NULL DEFAULT 1,  -- NUEVO: Cantidad
+    unit_price DECIMAL(15, 2) NOT NULL,  -- NUEVO: Precio unitario
+    subtotal DECIMAL(15, 2) NOT NULL,  -- NUEVO: Subtotal (cantidad * precio unitario)
+    tax_amount DECIMAL(10, 2) DEFAULT 0.00,
+    total_amount DECIMAL(15, 2) NOT NULL,
+    
+    -- Descripción y categoría
+    description TEXT NOT NULL,
+    category VARCHAR(100),
+    supplier_name VARCHAR(200),
+    
+    -- Documentos adjuntos
+    invoice_document_url TEXT,
+    additional_documents_urls TEXT[],
+    
+    -- Información de pago
+    payment_date DATE,
+    payment_method VARCHAR(100),
+    payment_reference VARCHAR(100),
+    is_paid BOOLEAN DEFAULT FALSE,
+    
+    -- Control y aprobación
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    approved_by INTEGER REFERENCES users(id),
+    approval_date TIMESTAMP WITH TIME ZONE,
+    is_approved BOOLEAN DEFAULT FALSE,
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_project_or_phase_budget CHECK (
+        (project_id IS NOT NULL AND phase_id IS NULL) OR
+        (project_id IS NULL AND phase_id IS NOT NULL)
+    ),
+    CONSTRAINT check_amounts CHECK (
+        quantity > 0 AND
+        unit_price >= 0 AND
+        subtotal >= 0 AND
+        tax_amount >= 0 AND
+        total_amount > 0
+    )
+);
+
+-- Índices
+CREATE INDEX idx_budget_execution_project ON budget_execution(project_id);
+CREATE INDEX idx_budget_execution_phase ON budget_execution(phase_id);
+CREATE INDEX idx_budget_execution_invoice_type ON budget_execution(invoice_type);
+CREATE INDEX idx_budget_execution_invoice_date ON budget_execution(invoice_date);
+CREATE INDEX idx_budget_execution_invoice_number ON budget_execution(invoice_number);
+CREATE INDEX idx_budget_execution_category ON budget_execution(category);
+CREATE INDEX idx_budget_execution_is_paid ON budget_execution(is_paid);
+CREATE INDEX idx_budget_execution_is_approved ON budget_execution(is_approved);
+CREATE INDEX idx_budget_execution_created_by ON budget_execution(created_by);
+CREATE INDEX idx_budget_execution_approved_by ON budget_execution(approved_by);
+
+-- Triggers
+CREATE TRIGGER update_budget_execution_timestamp
+    BEFORE UPDATE ON budget_execution
+    FOR EACH ROW
+    EXECUTE FUNCTION update_modified_timestamp();
+
+CREATE TRIGGER audit_budget_execution
+    AFTER INSERT OR UPDATE OR DELETE ON budget_execution
+    FOR EACH ROW
+    EXECUTE FUNCTION audit_trigger_function();
+
+COMMENT ON TABLE budget_execution IS 'Ejecución presupuestaria de proyectos y fases - Registro de gastos y facturas';
+COMMENT ON COLUMN budget_execution.invoice_name IS 'Nombre descriptivo de la factura';
+COMMENT ON COLUMN budget_execution.quantity IS 'Cantidad de artículos/servicios';
+COMMENT ON COLUMN budget_execution.unit_price IS 'Precio unitario del artículo/servicio';
+COMMENT ON COLUMN budget_execution.subtotal IS 'Subtotal antes de impuestos (cantidad * precio unitario)';
+
+-- =====================================================
+-- TRIGGER AUTOMÁTICO PARA CALCULAR SUBTOTAL Y TOTAL
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION calculate_budget_amounts()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Calcular subtotal
+    NEW.subtotal = NEW.quantity * NEW.unit_price;
+    
+    -- Calcular total
+    NEW.total_amount = NEW.subtotal + COALESCE(NEW.tax_amount, 0);
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER calculate_budget_amounts_trigger
+    BEFORE INSERT OR UPDATE ON budget_execution
+    FOR EACH ROW
+    EXECUTE FUNCTION calculate_budget_amounts();
+
+COMMENT ON FUNCTION calculate_budget_amounts IS 'Calcula automáticamente subtotal y total de facturas';
+
+-- =====================================================
+-- TRIGGER PARA ACTUALIZAR PRESUPUESTO DE PROYECTO/FASE
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION update_actual_budget()
+RETURNS TRIGGER AS $$
+DECLARE
+    total_exec DECIMAL(15,2);
+    target_project_id INTEGER;
+    target_phase_id INTEGER;
+BEGIN
+    -- Determinar el proyecto o fase afectado
+    target_project_id := COALESCE(NEW.project_id, OLD.project_id);
+    target_phase_id := COALESCE(NEW.phase_id, OLD.phase_id);
+    
+    -- Si es un proyecto
+    IF target_project_id IS NOT NULL THEN
+        SELECT COALESCE(SUM(total_amount), 0)
+        INTO total_exec
+        FROM budget_execution
+        WHERE project_id = target_project_id
+        AND is_approved = TRUE;
+        
+        UPDATE projects
+        SET actual_budget = total_exec
+        WHERE id = target_project_id;
+    END IF;
+    
+    -- Si es una fase
+    IF target_phase_id IS NOT NULL THEN
+        SELECT COALESCE(SUM(total_amount), 0)
+        INTO total_exec
+        FROM budget_execution
+        WHERE phase_id = target_phase_id
+        AND is_approved = TRUE;
+        
+        UPDATE project_phases
+        SET actual_budget = total_exec
+        WHERE id = target_phase_id;
+    END IF;
+    
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_actual_budget_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON budget_execution
+    FOR EACH ROW
+    EXECUTE FUNCTION update_actual_budget();
+
+COMMENT ON FUNCTION update_actual_budget IS 'Actualiza automáticamente el presupuesto actual del proyecto o fase';
+
+-- =====================================================
+-- TABLA DE AUDITORÍA
+-- =====================================================
+
+CREATE TABLE audit_log (
+    id SERIAL PRIMARY KEY,
+    table_name VARCHAR(100) NOT NULL,
+    operation VARCHAR(10) NOT NULL,
+    old_data JSONB,
+    new_data JSONB,
+    user_id INTEGER REFERENCES users(id),
+    ip_address INET,
+    performed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_audit_table ON audit_log(table_name);
+CREATE INDEX idx_audit_operation ON audit_log(operation);
+CREATE INDEX idx_audit_user ON audit_log(user_id);
+CREATE INDEX idx_audit_date ON audit_log(performed_at);
+
+COMMENT ON TABLE audit_log IS 'Registro de auditoría de todas las operaciones en la base de datos';
+
+-- =====================================================
+-- TABLA DE SESIONES DE USUARIO
+-- =====================================================
+
+CREATE TABLE user_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_token VARCHAR(255) UNIQUE NOT NULL,
+    ip_address INET,
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    last_activity TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE INDEX idx_sessions_user ON user_sessions(user_id);
+CREATE INDEX idx_sessions_token ON user_sessions(session_token);
+CREATE INDEX idx_sessions_expires ON user_sessions(expires_at);
+CREATE INDEX idx_sessions_active ON user_sessions(is_active);
+
+COMMENT ON TABLE user_sessions IS 'Sesiones activas de usuarios';
+
+-- =====================================================
+-- VISTAS ÚTILES
+-- =====================================================
+
+-- Vista de proyectos con información resumida
+CREATE VIEW v_projects_summary AS
+SELECT 
+    p.id,
+    p.project_name,
+    p.project_code,
+    p.status,
+    p.start_date,
+    p.end_date,
+    p.progress_percentage,
+    p.municipality,
+    p.department,
+    p.estimated_budget,
+    p.actual_budget,
+    u.full_name AS responsible_name,
+    COUNT(DISTINCT pb.beneficiary_id) AS total_beneficiaries,
+    COUNT(DISTINCT pp.id) AS total_phases,
+    COALESCE(SUM(pm.total_cost), 0) AS total_materials_cost,
+    COUNT(DISTINCT be.id) AS total_invoices,
+    COALESCE(SUM(be.total_amount), 0) AS total_executed
+FROM projects p
+LEFT JOIN users u ON p.responsible_user = u.id
+LEFT JOIN project_beneficiaries pb ON p.id = pb.project_id
+LEFT JOIN project_phases pp ON p.id = pp.project_id
+LEFT JOIN project_materials pm ON p.id = pm.project_id
+LEFT JOIN budget_execution be ON p.id = be.project_id AND be.is_approved = TRUE
+GROUP BY p.id, u.full_name;
+
+-- Vista de beneficiarios completa
+CREATE VIEW v_beneficiaries_complete AS
+SELECT 
+    b.id,
+    b.first_name || ' ' || b.last_name AS full_name,
+    b.cui_dpi,
+    b.dpi_image_url,
+    b.birth_date,
+    b.age,
+    b.gender,
+    b.civil_status,
+    b.ethnicity,
+    b.department,
+    b.municipality,
+    b.community,
+    b.total_household_members,
+    
+    -- Información de salud
+    bh.has_diabetes,
+    bh.has_high_blood_pressure,
+    bh.has_low_blood_pressure,
+    (bh.has_language_disability OR bh.has_hearing_disability OR 
+     bh.has_visual_disability OR bh.has_physical_disability OR 
+     bh.has_intellectual_disability OR bh.has_psychosocial_disability) AS has_any_disability,
+    
+    -- Información de educación
+    be.education_level,
+    be.school_attendance,
+    be.has_cellphone,
+    be.has_computer,
+    be.has_internet,
+    
+    -- Información de vivienda
+    bho.housing_tenure,
+    bho.housing_type,
+    bho.number_of_rooms,
+    
+    -- Información económica
+    (bec.economically_active_employed OR bec.economically_active_independent OR 
+     bec.economically_active_entrepreneur OR bec.economically_active_day_laborer) AS is_employed,
+    bec.receives_social_aid,
+    
+    b.is_active,
+    b.created_at
+FROM beneficiaries b
+LEFT JOIN beneficiary_health bh ON b.id = bh.beneficiary_id
+LEFT JOIN beneficiary_education be ON b.id = be.beneficiary_id
+LEFT JOIN beneficiary_housing bho ON b.id = bho.beneficiary_id
+LEFT JOIN beneficiary_economy bec ON b.id = bec.beneficiary_id;
+
+-- Vista de beneficiarios con proyectos
+CREATE VIEW v_beneficiaries_projects AS
+SELECT 
+    b.id AS beneficiary_id,
+    b.first_name || ' ' || b.last_name AS full_name,
+    b.cui_dpi,
+    b.municipality,
+    b.department,
+    p.id AS project_id,
+    p.project_name,
+    pp.id AS phase_id,
+    pp.phase_name,
+    CASE 
+        WHEN pb.id IS NOT NULL THEN 'Proyecto'
+        WHEN phb.id IS NOT NULL THEN 'Fase'
+    END AS assignment_type
+FROM beneficiaries b
+LEFT JOIN project_beneficiaries pb ON b.id = pb.beneficiary_id
+LEFT JOIN projects p ON pb.project_id = p.id
+LEFT JOIN phase_beneficiaries phb ON b.id = phb.beneficiary_id
+LEFT JOIN project_phases pp ON phb.phase_id = pp.id;
+
+-- Vista de actividades recientes
+CREATE VIEW v_recent_activities AS
+SELECT 
+    da.id,
+    da.activity_date,
+    da.activity_type,
+    da.description,
+    COALESCE(p.project_name, 'Fase: ' || pp.phase_name) AS project_or_phase,
+    u.full_name AS created_by_name,
+    COUNT(ap.id) AS photos_count
+FROM daily_activities da
+LEFT JOIN projects p ON da.project_id = p.id
+LEFT JOIN project_phases pp ON da.phase_id = pp.id
+LEFT JOIN users u ON da.created_by = u.id
+LEFT JOIN activity_photos ap ON da.id = ap.activity_id
+GROUP BY da.id, p.project_name, pp.phase_name, u.full_name
+ORDER BY da.activity_date DESC;
+
+-- Vista de ejecución presupuestaria por proyecto
+CREATE VIEW v_budget_execution_by_project AS
+SELECT 
+    p.id AS project_id,
+    p.project_name,
+    p.project_code,
+    p.estimated_budget,
+    p.actual_budget,
+    COUNT(be.id) AS total_invoices,
+    COALESCE(SUM(be.total_amount), 0) AS total_executed,
+    COALESCE(SUM(CASE WHEN be.is_paid THEN be.total_amount ELSE 0 END), 0) AS total_paid,
+    COALESCE(SUM(CASE WHEN NOT be.is_paid THEN be.total_amount ELSE 0 END), 0) AS total_pending,
+    CASE 
+        WHEN p.estimated_budget > 0 THEN 
+            ROUND((COALESCE(SUM(be.total_amount), 0) / p.estimated_budget * 100), 2)
+        ELSE 0 
+    END AS execution_percentage,
+    CASE 
+        WHEN p.estimated_budget > 0 THEN 
+            p.estimated_budget - COALESCE(SUM(be.total_amount), 0)
+        ELSE 0 
+    END AS budget_remaining
+FROM projects p
+LEFT JOIN budget_execution be ON p.id = be.project_id AND be.is_approved = TRUE
+GROUP BY p.id, p.project_name, p.project_code, p.estimated_budget, p.actual_budget;
+
+-- Vista de ejecución presupuestaria por fase
+CREATE VIEW v_budget_execution_by_phase AS
+SELECT 
+    pp.id AS phase_id,
+    pp.phase_name,
+    pp.project_id,
+    p.project_name,
+    pp.estimated_budget,
+    pp.actual_budget,
+    COUNT(be.id) AS total_invoices,
+    COALESCE(SUM(be.total_amount), 0) AS total_executed,
+    COALESCE(SUM(CASE WHEN be.is_paid THEN be.total_amount ELSE 0 END), 0) AS total_paid,
+    COALESCE(SUM(CASE WHEN NOT be.is_paid THEN be.total_amount ELSE 0 END), 0) AS total_pending,
+    CASE 
+        WHEN pp.estimated_budget > 0 THEN 
+            ROUND((COALESCE(SUM(be.total_amount), 0) / pp.estimated_budget * 100), 2)
+        ELSE 0 
+    END AS execution_percentage
+FROM project_phases pp
+JOIN projects p ON pp.project_id = p.id
+LEFT JOIN budget_execution be ON pp.id = be.phase_id AND be.is_approved = TRUE
+GROUP BY pp.id, pp.phase_name, pp.project_id, p.project_name, pp.estimated_budget, pp.actual_budget;
+
+-- Vista detallada de facturas
+CREATE VIEW v_invoices_detail AS
+SELECT 
+    be.id,
+    COALESCE(p.id, pp.project_id) AS project_id,
+    COALESCE(p.project_name, 'Fase: ' || pp.phase_name) AS project_or_phase_name,
+    be.phase_id,
+    be.invoice_type,
+    be.invoice_number,
+    be.invoice_name,
+    be.invoice_date,
+    be.quantity,
+    be.unit_price,
+    be.subtotal,
+    be.tax_amount,
+    be.total_amount,
+    be.description,
+    be.category,
+    be.supplier_name,
+    be.payment_date,
+    be.payment_method,
+    be.is_paid,
+    be.is_approved,
+    u_created.full_name AS created_by_name,
+    u_approved.full_name AS approved_by_name,
+    be.created_at
+FROM budget_execution be
+LEFT JOIN projects p ON be.project_id = p.id
+LEFT JOIN project_phases pp ON be.phase_id = pp.id
+LEFT JOIN users u_created ON be.created_by = u_created.id
+LEFT JOIN users u_approved ON be.approved_by = u_approved.id
+ORDER BY be.invoice_date DESC;
+
+-- =====================================================
+-- FUNCIONES BÁSICAS
+-- =====================================================
+
+-- Función para crear hash de contraseña
+CREATE OR REPLACE FUNCTION hash_password(password TEXT)
+RETURNS TEXT AS $$
+BEGIN
+    RETURN crypt(password, gen_salt('bf', 10));
+END;
+$$ LANGUAGE plpgsql;
+
+-- Función para verificar contraseña
+CREATE OR REPLACE FUNCTION verify_password(password TEXT, password_hash TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN password_hash = crypt(password, password_hash);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Función para limpiar sesiones expiradas
+CREATE OR REPLACE FUNCTION clean_expired_sessions()
+RETURNS INTEGER AS $$
+DECLARE
+    deleted_count INTEGER;
+BEGIN
+    DELETE FROM user_sessions 
+    WHERE expires_at < CURRENT_TIMESTAMP;
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Tabla de Login Log (para compatibilidad con el servicio existente)
+
+CREATE TABLE IF NOT EXISTS login_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    login_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    ip_address INET,
+    user_agent TEXT,
+    success BOOLEAN DEFAULT FALSE,
+    failure_reason TEXT
+);
+
+CREATE INDEX idx_login_log_user ON login_log(user_id);
+CREATE INDEX idx_login_log_login_time ON login_log(login_time);
+CREATE INDEX idx_login_log_success ON login_log(success);
+
+COMMENT ON TABLE login_log IS 'Registro de intentos de inicio de sesión (compatibilidad)';
+
+-- Función para login de usuario
+CREATE OR REPLACE FUNCTION user_login(p_username VARCHAR, p_password TEXT)
+RETURNS TABLE (
+    user_id INTEGER,
+    username VARCHAR,
+    email VARCHAR,
+    full_name VARCHAR,
+    role user_role
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        u.id,
+        u.username,
+        u.email,
+        u.full_name,
+        u.role
+    FROM users u
+    WHERE u.username = p_username
+    AND u.password_hash = crypt(p_password, u.password_hash)
+    AND u.is_active = TRUE;
+    
+    -- Actualizar último login
+    UPDATE users 
+    SET last_login = CURRENT_TIMESTAMP 
+    WHERE users.username = p_username;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Agregar columna created_by a las tablas que la tienen en los modelos pero no en la base de datos original
+
+-- project_beneficiaries
+ALTER TABLE project_beneficiaries ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+
+-- phase_beneficiaries
+ALTER TABLE phase_beneficiaries ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+
+-- project_evidences
+ALTER TABLE project_evidences ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+
+-- project_materials
+ALTER TABLE project_materials ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+
+-- Verificar que las columnas fueron agregadas
+SELECT 
+    'project_beneficiaries' as table_name,
+    column_name,
+    data_type,
+    is_nullable
+FROM information_schema.columns 
+WHERE table_name IN ('project_beneficiaries', 'phase_beneficiaries', 'project_evidences', 'project_materials') 
+AND column_name = 'created_by'
+ORDER BY table_name;
+
+
+-- =====================================================
+-- DATOS INICIALES
+-- =====================================================
+
+-- Crear usuario administrador por defecto
+INSERT INTO users (username, email, password_hash, full_name, role, is_active) 
+VALUES (
+    'admin',
+    'admin@mayaguatemala.org',
+    crypt('Admin123!', gen_salt('bf', 10)),
+    'Administrador del Sistema',
+    'administrador',
+    TRUE
+);
+
+-- =====================================================
+-- MENSAJE FINAL
+-- =====================================================
+
+DO $$
+BEGIN
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'Base de datos creada exitosamente!';
+    RAISE NOTICE 'Sistema: Gestión de Proyectos Maya Guatemala';
+    RAISE NOTICE 'Versión 2.0 - Completa y Normalizada';
+    RAISE NOTICE 'Zona Horaria: America/Guatemala';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'Usuario por defecto:';
+    RAISE NOTICE '  Username: admin';
+    RAISE NOTICE '  Password: Admin123!';
+    RAISE NOTICE '  Email: admin@mayaguatemala.org';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'MEJORAS IMPLEMENTADAS:';
+    RAISE NOTICE '  ✓ Beneficiarios normalizados (DPI image URL)';
+    RAISE NOTICE '  ✓ Evidencias con checklist de requerimientos (JSON)';
+    RAISE NOTICE '  ✓ Evidencias de fases con requerimientos';
+    RAISE NOTICE '  ✓ Ejecución presupuestaria mejorada:';
+    RAISE NOTICE '    - Asignación a proyectos O fases';
+    RAISE NOTICE '    - Campos: nombre, fecha, descripción, cantidad';
+    RAISE NOTICE '    - Cálculo automático de subtotal y total';
+    RAISE NOTICE '    - Actualización automática de presupuestos';
+    RAISE NOTICE '  ✓ Vistas optimizadas para reportes';
+    RAISE NOTICE '  ✓ Triggers automáticos de cálculo';
+    RAISE NOTICE '  ✓ Auditoría completa';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'CARACTERÍSTICAS DEL SISTEMA:';
+    RAISE NOTICE '  ✓ Gestión de usuarios con roles';
+    RAISE NOTICE '  ✓ Encriptación de contraseñas (bcrypt)';
+    RAISE NOTICE '  ✓ Sistema de proyectos con fases';
+    RAISE NOTICE '  ✓ Censo completo de beneficiarios';
+    RAISE NOTICE '  ✓ Control de materiales';
+    RAISE NOTICE '  ✓ Evidencias con fotos y requerimientos';
+    RAISE NOTICE '  ✓ Ejecución presupuestaria completa';
+    RAISE NOTICE '  ✓ Actividades diarias con fotos';
+    RAISE NOTICE '  ✓ Índices optimizados';
+    RAISE NOTICE '========================================';
+END $$;
