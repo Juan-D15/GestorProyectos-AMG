@@ -19,56 +19,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Validación del formulario de proyectos
-    const form = document.querySelector('form');
-    const errorMessagesDiv = document.getElementById('formErrorMessages');
-    
-    if (form && errorMessagesDiv) {
-        form.addEventListener('submit', function(e) {
-            // Limpiar errores anteriores
-            errorMessagesDiv.innerHTML = '';
-            
-            const project_name = form.querySelector('input[name="project_name"]')?.value.trim();
-            const project_code = form.querySelector('input[name="project_code"]')?.value.trim();
-            
-            let errors = [];
-            
-            // Validar nombre del proyecto
-            if (!project_name) {
-                errors.push('El nombre del proyecto es obligatorio');
-            }
-            
-            // Validar código del proyecto si se ingresó
-            if (project_code && !/^[a-zA-Z0-9-]+$/.test(project_code)) {
-                errors.push('El código solo puede contener letras, números y guiones');
-            }
-            
-            // Mostrar errores si los hay
-            if (errors.length > 0) {
-                e.preventDefault();
-                
-                errorMessagesDiv.innerHTML = `
-                    <div class="mb-6 p-4 rounded-lg bg-red-100 border-red-200 text-red-700" data-auto-dismiss="5000">
-                        <div class="mb-3">
-                            <div class="flex items-center">
-                                <i class="fas fa-exclamation-circle mr-2"></i>
-                                <p class="font-medium">Por favor corrija los siguientes errores:</p>
-                            </div>
-                        </div>
-                        <ul class="list-disc list-inside space-y-1 text-sm">
-                            ${errors.map(error => `<li>${error}</li>`).join('')}
-                        </ul>
-                    </div>
-                `;
-                
-                // Scroll al inicio del formulario
-                form.scrollIntoView({ behavior: 'smooth' });
-                
-                // Disparar evento personalizado para el script de auto-dismiss
-                const customEvent = new CustomEvent('messagesUpdated', { detail: { messages: document.querySelectorAll('[data-auto-dismiss]') } });
-                document.dispatchEvent(customEvent);
-            }
-        });
+    // Verificar si hay parámetro para mostrar inactivos
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('show_inactive') === 'true') {
+        setTimeout(loadInactiveProjects, 500);
     }
 });
 
@@ -77,107 +31,9 @@ function editProject(projectId) {
     window.location.href = `/dashboard/proyectos/${projectId}/editar/`;
 }
 
-// Eliminar proyecto
+// Eliminar proyecto (ahora es soft delete)
 function deleteProject(projectId) {
     window.location.href = `/dashboard/proyectos/${projectId}/eliminar/`;
-}
-
-// Funciones para manejo de imagen de portada
-function previewImage(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const preview = document.getElementById('imagePreview');
-            const container = document.getElementById('imagePreviewContainer');
-            
-            preview.src = e.target.result;
-            container.classList.remove('hidden');
-            inputContainer.classList.add('hidden');
-            
-            // Asegurar que la imagen se cargue completamente antes de ajustar
-            preview.onload = function() {
-                // Ajustar altura del contenedor a la altura natural de la imagen
-                const naturalHeight = preview.naturalHeight;
-                const naturalWidth = preview.naturalWidth;
-                const containerHeight = Math.min(naturalHeight, 400); // Altura máxima de 400px
-                
-                // Ajustar el estilo de la imagen para que llene el contenedor
-                preview.style.height = 'auto';
-                preview.style.maxHeight = containerHeight + 'px';
-                preview.style.maxWidth = '100%';
-            };
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-function removeCoverImage() {
-    const input = document.getElementById('coverImageInput');
-    const preview = document.getElementById('imagePreview');
-    const container = document.getElementById('imagePreviewContainer');
-    const inputContainer = input.closest('.flex-1');
-    
-    input.value = '';
-    preview.src = '';
-    container.classList.add('hidden');
-    inputContainer.classList.remove('hidden');
-    
-    // Resetear estilos
-    preview.style.height = '';
-    preview.style.maxHeight = '';
-    preview.style.maxWidth = '';
-}
-
-// Eliminar proyecto
-function deleteProject(projectId) {
-    window.location.href = `/dashboard/proyectos/${projectId}/eliminar/`;
-}
-
-// Funciones para manejo de imagen de portada
-function previewImage(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const preview = document.getElementById('imagePreview');
-            const container = document.getElementById('imagePreviewContainer');
-            const inputContainer = input.closest('.flex-1');
-            
-            preview.src = e.target.result;
-            container.classList.remove('hidden');
-            inputContainer.classList.add('hidden');
-            
-            // Asegurar que la imagen se cargue completamente antes de ajustar
-            preview.onload = function() {
-                // Ajustar altura del contenedor a la altura natural de la imagen
-                const naturalHeight = preview.naturalHeight;
-                const naturalWidth = preview.naturalWidth;
-                const containerHeight = Math.min(naturalHeight, 400); // Altura máxima de 400px
-                
-                // Ajustar el estilo de la imagen para que llene el contenedor
-                preview.style.height = 'auto';
-                preview.style.maxHeight = containerHeight + 'px';
-                preview.style.maxWidth = '100%';
-            };
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-function removeCoverImage() {
-    const input = document.getElementById('coverImageInput');
-    const preview = document.getElementById('imagePreview');
-    const container = document.getElementById('imagePreviewContainer');
-    const inputContainer = input.closest('.flex-1');
-    
-    input.value = '';
-    preview.src = '';
-    container.classList.add('hidden');
-    inputContainer.classList.remove('hidden');
-    
-    // Resetear estilos
-    preview.style.height = '';
-    preview.style.maxHeight = '';
-    preview.style.maxWidth = '';
 }
 
 // ====================
@@ -228,6 +84,7 @@ function loadInactiveProjects() {
     
     if (!tableBody) return;
     
+    // Mostrar loader
     tableBody.innerHTML = `
         <tr>
             <td colspan="6" class="text-center py-8">
@@ -239,8 +96,10 @@ function loadInactiveProjects() {
         </tr>
     `;
     
+    // Obtener parámetros de filtros actuales
     const urlParams = new URLSearchParams(window.location.search);
     
+    // Llamada a API para obtener proyectos inactivos
     fetch(`/api/v1/projects/?show_inactive=true&${urlParams.toString()}`)
         .then(response => response.json())
         .then(data => {
@@ -278,19 +137,25 @@ function loadInactiveProjects() {
                         </td>
                         <td class="py-3 px-4">
                             <div class="flex items-center justify-end space-x-2">
-                                <a href="/dashboard/proyectos/${project.id}/reactivar/" class="px-3 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors">
+                                <a href="/dashboard/proyectos/${project.id}/reactivar/" class="px-3 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors" title="Reactivar">
                                     <i class="fas fa-undo"></i>
                                 </a>
                             </div>
                         </td>
                     </tr>
-                `.join('');
+                `).join('');
             } else {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="6" class="text-center py-12">
-                            <i class="fas fa-inbox text-4xl text-gray-300 mb-3"></i>
-                            <p class="text-gray-500">No hay proyectos desactivados</p>
+                            <i class="fas fa-folder-open text-4xl text-gray-300 mb-3"></i>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">No hay proyectos desactivados</h3>
+                            <p class="text-gray-500">
+                                <a href="/dashboard/proyectos/crear/" class="inline-flex items-center space-x-2 px-6 py-3 bg-[#8a4534] hover:bg-[#a05240] text-white font-medium rounded-lg transition-colors">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Crear Proyecto</span>
+                                </a>
+                            </p>
                         </td>
                     </tr>
                 `;
@@ -307,4 +172,51 @@ function loadInactiveProjects() {
                 </tr>
             `;
         });
+}
+
+// Funciones para manejo de imagen de portada
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('imagePreview');
+            const container = document.getElementById('imagePreviewContainer');
+            const inputContainer = input.closest('.flex-1');
+            
+            preview.src = e.target.result;
+            container.classList.remove('hidden');
+            inputContainer.classList.add('hidden');
+            
+            // Asegurar que la imagen se cargue completamente antes de ajustar
+            preview.onload = function() {
+                // Ajustar altura del contenedor a la altura natural de la imagen
+                const naturalHeight = preview.naturalHeight;
+                const naturalWidth = preview.naturalWidth;
+                const containerHeight = Math.min(naturalHeight, 400); // Altura máxima de 400px
+                
+                // Ajustar el estilo de la imagen para que llene el contenedor
+                preview.style.height = 'auto';
+                preview.style.maxHeight = containerHeight + 'px';
+                preview.style.maxWidth = '100%';
+            };
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function removeCoverImage() {
+    const input = document.getElementById('coverImageInput');
+    const preview = document.getElementById('imagePreview');
+    const container = document.getElementById('imagePreviewContainer');
+    const inputContainer = input.closest('.flex-1');
+    
+    input.value = '';
+    preview.src = '';
+    container.classList.add('hidden');
+    inputContainer.classList.remove('hidden');
+    
+    // Resetear estilos
+    preview.style.height = '';
+    preview.style.maxHeight = '';
+    preview.style.maxWidth = '';
 }
