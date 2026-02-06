@@ -79,23 +79,23 @@
             {% endif %}
         </div>
         
-        <!-- Agregar Nuevas Fotos -->
-        <div class="border-b border-gray-100 pb-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Agregar Nuevas Fotos</h2>
-            <div class="relative">
-                <input type="file" name="new_photos" id="newPhotosInput" accept="image/*" multiple class="hidden" onchange="previewNewPhotos(this)" data-form-id="evidenceEditForm">
-                <label for="newPhotosInput" class="flex items-center justify-center w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#07680b] hover:bg-[#07680b]/5 transition-all">
-                    <div class="flex flex-col items-center space-y-2">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400"></i>
-                        <div class="text-center">
-                            <p class="text-sm font-medium text-gray-700">Subir nuevas fotos</p>
-                            <p class="text-xs text-gray-500">o arrastra y suelta aquí (múltiples)</p>
-                        </div>
-                    </div>
-                </label>
-            </div>
-            <div id="newPhotosPreview" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 hidden"></div>
-        </div>
+         <!-- Agregar Nuevas Fotos -->
+         <div class="border-b border-gray-100 pb-6">
+             <h2 class="text-lg font-semibold text-gray-900 mb-4">Agregar Nuevas Fotos</h2>
+             <div class="relative">
+                 <input type="file" name="photos" id="newPhotosInput" accept="image/*" multiple class="hidden" onchange="previewNewPhotos(this)" data-form-id="evidenceEditForm">
+                 <label for="newPhotosInput" class="flex items-center justify-center w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#07680b] hover:bg-[#07680b]/5 transition-all">
+                     <div class="flex flex-col items-center space-y-2">
+                         <i class="fas fa-cloud-upload-alt text-3xl text-gray-400"></i>
+                         <div class="text-center">
+                             <p class="text-sm font-medium text-gray-700">Subir nuevas fotos</p>
+                             <p class="text-xs text-gray-500">o arrastra y suelta aquí (múltiples)</p>
+                         </div>
+                     </div>
+                 </label>
+             </div>
+             <div id="newPhotosPreview" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 hidden"></div>
+         </div>
         
         <!-- Beneficiarios -->
         <div class="border-b border-gray-100 pb-6">

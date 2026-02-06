@@ -3,6 +3,153 @@
 // Variable global para almacenar las fotos seleccionadas
 let selectedPhotos = [];
 
+function previewNewPhotos(input) {
+    const previewContainer = document.getElementById('newPhotosPreview');
+    
+    console.log('=== previewNewPhotos llamado ===');
+    console.log('Input:', input);
+    console.log('Input ID:', input.id);
+    console.log('Files en input:', input.files);
+    console.log('Files length:', input.files.length);
+    
+    if (input.files.length > 0) {
+        previewContainer.classList.remove('hidden');
+        console.log('=== Agregando fotos a la selección ===');
+        console.log('Cantidad de nuevas fotos:', input.files.length);
+        console.log('Fotos en selectedPhotos ANTES de agregar:', selectedPhotos.length);
+        
+        Array.from(input.files).forEach((file) => {
+            console.log(`  Foto: ${file.name} (${file.size} bytes)`);
+            // Agregar la foto al array global
+            selectedPhotos.push(file);
+        });
+        
+        console.log('Total de fotos seleccionadas DESPUÉS de agregar:', selectedPhotos.length);
+        
+        // Limpiar y regenerar la previsualización
+        previewContainer.innerHTML = '';
+        
+        console.log('Generando previsualización para', selectedPhotos.length, 'fotos');
+        
+        selectedPhotos.forEach((file, index) => {
+            console.log(`  Generando preview para foto ${index +1}: ${file.name}`);
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                console.log(`    Preview generado para ${file.name}`);
+                const preview = document.createElement('div');
+                preview.className = 'relative';
+                
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.alt = 'Previsualización';
+                img.className = 'w-full h-24 object-cover rounded-lg border border-gray-200';
+                
+                const label = document.createElement('label');
+                label.className = 'absolute -top-2 -right-2 cursor-pointer w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity';
+                label.innerHTML = '<i class="fas fa-times text-xs"></i>';
+                label.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeSelectedPhoto(index);
+                };
+                
+                preview.appendChild(img);
+                preview.appendChild(label);
+                previewContainer.appendChild(preview);
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        console.log('PreviewContainer children after generation:', previewContainer.children.length);
+        
+        // Limpiar el input para permitir seleccionar más fotos
+        input.value = '';
+        console.log('Input limpiado');
+    } else {
+        console.log('NO HAY FOTOS - ignorando');
+    }
+}
+
+function removeSelectedPhoto(index) {
+    selectedPhotos.splice(index, 1);
+    // Regenerar la previsualización
+    const previewContainer = document.getElementById('newPhotosPreview');
+    previewContainer.innerHTML = '';
+    
+    if (selectedPhotos.length === 0) {
+        previewContainer.classList.add('hidden');
+    } else {
+        selectedPhotos.forEach((file, newIndex) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.createElement('div');
+                preview.className = 'relative';
+                
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.alt = 'Previsualización';
+                img.className = 'w-full h-24 object-cover rounded-lg border border-gray-200';
+                
+                const label = document.createElement('label');
+                label.className = 'absolute -top-2 -right-2 cursor-pointer w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity';
+                label.innerHTML = '<i class="fas fa-times text-xs"></i>';
+                label.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeSelectedPhoto(newIndex);
+                };
+                
+                preview.appendChild(img);
+                preview.appendChild(label);
+                previewContainer.appendChild(preview);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+}
+
+// Interceptar el envío del formulario de edición de evidencia para agregar las fotos acumuladas
+document.addEventListener('DOMContentLoaded', function() {
+    const evidenceEditForm = document.getElementById('evidenceEditForm');
+    if (evidenceEditForm) {
+        evidenceEditForm.addEventListener('submit', function(e) {
+            console.log('=== FORMULARIO DE EDICIÓN ENVIADO ===');
+            console.log('selectedPhotos.length:', selectedPhotos.length);
+            console.log('selectedPhotos:', selectedPhotos);
+            
+            const photoInput = document.getElementById('newPhotosInput');
+            console.log('photoInput.files.length:', photoInput.files.length);
+            
+            if (selectedPhotos.length > 0) {
+                console.log('Preparando para enviar fotos acumuladas...');
+                e.preventDefault();
+                
+                // Crear un DataTransfer para agregar las fotos al input original
+                const dataTransfer = new DataTransfer();
+                console.log('Agregando fotos al DataTransfer...');
+                selectedPhotos.forEach((file, index) => {
+                    console.log(`  ${index +1}. ${file.name}`);
+                    dataTransfer.items.add(file);
+                });
+                
+                console.log('Total items en DataTransfer:', dataTransfer.items.length);
+                console.log('Total files en DataTransfer:', dataTransfer.files.length);
+                
+                // Reemplazar los archivos del input con los del array
+                photoInput.files = dataTransfer.files;
+                console.log('photoInput.files DESPUÉS de DataTransfer:', photoInput.files.length);
+                console.log('photoInput.files:', photoInput.files);
+                
+                // Ahora enviar el formulario normalmente
+                console.log('Enviando formulario...');
+                evidenceEditForm.submit();
+            } else {
+                console.log('No hay fotos acumuladas, enviando formulario normalmente');
+            }
+        });
+    }
+});
+
 // Función para abrir el modal de selección de beneficiarios
 function openBeneficiariesModal() {
     console.log('=== Abriendo modal de selección de beneficiarios para evidencia ===');
@@ -223,26 +370,42 @@ function openEditEvidenceModal(button) {
     // Limpiar completamente el estado anterior
     // Limpiar fotos nuevas seleccionadas
     selectedPhotos = [];
+    console.log('Array selectedPhotos limpiado al abrir modal');
     
     // Limpiar campos ocultos de fotos a eliminar
     const deletePhotosInputs = document.querySelectorAll('#evidenceForm input[name="delete_photos"]');
     deletePhotosInputs.forEach(input => input.remove());
     
-    // Limpiar el input de fotos
-    const photoInput = document.getElementById('evidencePhotosInput');
+    // Limpiar el input de fotos (usar el ID correcto)
+    const photoInput = document.getElementById('newPhotosInput');
     if (photoInput) {
         photoInput.value = '';
+        console.log('Input de fotos limpiado');
     }
     
-    // Limpiar y ocultar previsualización
-    const previewContainer = document.getElementById('evidencePhotosPreview');
-    previewContainer.innerHTML = '';
-    previewContainer.classList.add('hidden');
+    // Limpiar y ocultar previsualización (usar el ID correcto)
+    const previewContainer = document.getElementById('newPhotosPreview');
+    if (previewContainer) {
+        previewContainer.innerHTML = '';
+        previewContainer.classList.add('hidden');
+        console.log('Preview container limpiado');
+    }
     
     console.log('Estado limpiado antes de cargar fotos existentes');
     
     // Cargar las fotos existentes de la evidencia
-    loadExistingPhotos(evidenceId);
+    // Verificar cuál formulario está activo (creación o edición)
+    const editForm = document.getElementById('evidenceEditForm');
+    const createForm = document.getElementById('evidenceForm');
+    
+    if (editForm) {
+        // Formulario de EDICIÓN: no cargar fotos existentes, solo fotos nuevas
+        console.log('Formulario de edición detectado, no cargando fotos existentes');
+    } else if (createForm) {
+        // Formulario de CREACIÓN: cargar fotos existentes
+        console.log('Formulario de creación detectado, cargando fotos existentes');
+        loadExistingPhotos(evidenceId);
+    }
     
     // Cargar los beneficiarios existentes de la evidencia
     loadExistingBeneficiaries(evidenceId);
@@ -251,23 +414,40 @@ function openEditEvidenceModal(button) {
 function closeEvidenceModal() {
     console.log('=== Cerrando modal de evidencia ===');
     
-    document.getElementById('evidenceModal').classList.add('hidden');
+    const modal = document.getElementById('evidenceModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
     document.body.style.overflow = 'auto';
     
-    // Limpiar completamente el formulario
-    document.getElementById('evidenceForm').reset();
-    document.getElementById('evidenceIdInput').value = '';
+    // Limpiar completamente el formulario (intentar ambos IDs)
+    const evidenceForm = document.getElementById('evidenceEditForm');
+    if (evidenceForm) {
+        evidenceForm.reset();
+    } else {
+        const oldForm = document.getElementById('evidenceForm');
+        if (oldForm) {
+            oldForm.reset();
+        }
+    }
     
-    // Limpiar el input de fotos
-    const photoInput = document.getElementById('evidencePhotosInput');
+    const evidenceIdInput = document.getElementById('evidenceIdInput');
+    if (evidenceIdInput) {
+        evidenceIdInput.value = '';
+    }
+    
+    // Limpiar el input de fotos (usar el ID correcto)
+    const photoInput = document.getElementById('newPhotosInput');
     if (photoInput) {
         photoInput.value = '';
     }
     
-    // Limpiar y ocultar el preview
-    const previewContainer = document.getElementById('evidencePhotosPreview');
-    previewContainer.innerHTML = '';
-    previewContainer.classList.add('hidden');
+    // Limpiar y ocultar el preview (usar el ID correcto)
+    const previewContainer = document.getElementById('newPhotosPreview');
+    if (previewContainer) {
+        previewContainer.innerHTML = '';
+        previewContainer.classList.add('hidden');
+    }
     
     // Limpiar fotos marcadas para eliminar
     const deletePhotosInputs = document.querySelectorAll('#evidenceForm input[name="delete_photos"]');
@@ -1067,40 +1247,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('ERROR: Formulario de edición no encontrado');
     }
 });
-
-function previewNewPhotos(input) {
-    const previewContainer = document.getElementById('newPhotosPreview');
-    previewContainer.innerHTML = '';
-    
-    if (input.files.length > 0) {
-        previewContainer.classList.remove('hidden');
-        console.log('=== Previsualizando fotos ===');
-        console.log('Cantidad de fotos:', input.files.length);
-        Array.from(input.files).forEach((file, index) => {
-            console.log(`  Foto ${index + 1}: ${file.name} (${file.size} bytes)`);
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const preview = document.createElement('div');
-                preview.className = 'relative';
-                
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.alt = 'Previsualización';
-                img.className = 'w-full h-24 object-cover rounded-lg border border-gray-200';
-                
-                const label = document.createElement('label');
-                label.htmlFor = `photo_delete_${index}`;
-                label.className = 'absolute -top-2 -right-2 cursor-pointer w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity';
-                label.innerHTML = '<i class="fas fa-times text-xs"></i>';
-                
-                preview.appendChild(img);
-                preview.appendChild(label);
-                previewContainer.appendChild(preview);
-            };
-             reader.readAsDataURL(file);
-        });
-    }
-}
 
 // Event listener para el input de búsqueda de beneficiarios (modal de proyectos)
 document.getElementById('beneficiarySearchInput')?.addEventListener('input', function(e) {
