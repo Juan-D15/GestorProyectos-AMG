@@ -510,10 +510,10 @@ def project_list_page(request):
     show_inactive = request.GET.get('show_inactive', 'false').lower() == 'true'
     
     if show_inactive:
-        projects = Project.objects.all().order_by('-updated_at')
+        projects = Project.objects.filter(is_active=False).order_by('-updated_at')
     else:
-        projects = Project.objects.filter(is_active=True).order_by('-created_at')
- 
+        projects = Project.objects.filter(is_active=True).order_by('-created_at') 
+    
     # Filtros
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
