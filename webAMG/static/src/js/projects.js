@@ -45,7 +45,7 @@ let showingInactiveProjects = false;
 function toggleInactiveProjects() {
     const activeSection = document.getElementById('activeProjectsSection');
     const inactiveSection = document.getElementById('inactiveProjectsSection');
-    const showInactiveBtn = document.getElementById('showInactiveBtn');
+    const toggleInactiveBtn = document.getElementById('toggleInactiveBtn');
     
     showingInactiveProjects = !showingInactiveProjects;
     
@@ -53,7 +53,7 @@ function toggleInactiveProjects() {
         // Mostrar proyectos inactivos
         activeSection.classList.add('hidden');
         inactiveSection.classList.remove('hidden');
-        showInactiveBtn.innerHTML = `
+        toggleInactiveBtn.innerHTML = `
             <div class="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
                 <i class="fas fa-list text-xl text-green-600"></i>
             </div>
@@ -67,7 +67,7 @@ function toggleInactiveProjects() {
         // Mostrar proyectos activos
         inactiveSection.classList.add('hidden');
         activeSection.classList.remove('hidden');
-        showInactiveBtn.innerHTML = `
+        toggleInactiveBtn.innerHTML = `
             <div class="w-12 h-12 rounded-lg bg-gray-500/10 flex items-center justify-center">
                 <i class="fas fa-archive text-xl text-gray-500"></i>
             </div>
@@ -133,7 +133,7 @@ function loadInactiveProjects() {
                             </span>
                         </td>
                         <td class="py-3 px-4">
-                            <p class="text-sm text-gray-600">${project.updated_at ? new Date(project.updated_at).toLocaleDateString('es-ES') : 'N/A'}</p>
+                            <p class="text-sm text-gray-600">${project.deactivated_at ? new Date(project.deactivated_at).toLocaleDateString('es-GT', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A'}</p>
                         </td>
                         <td class="py-3 px-4">
                             <div class="flex items-center justify-end space-x-2">
@@ -153,7 +153,6 @@ function loadInactiveProjects() {
                             <p class="text-gray-500">
                                 <a href="/dashboard/proyectos/crear/" class="inline-flex items-center space-x-2 px-6 py-3 bg-[#8a4534] hover:bg-[#a05240] text-white font-medium rounded-lg transition-colors">
                                     <i class="fas fa-plus"></i>
-                                    <span>Crear Proyecto</span>
                                 </a>
                             </p>
                         </td>

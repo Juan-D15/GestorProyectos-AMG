@@ -79,6 +79,7 @@ urlpatterns = [
     path("api/v1/users/<int:user_id>/update/", api_v1.update_user, name="api_v1_update_user"),
     path("api/v1/users/<int:user_id>/delete/", api_v1.delete_user, name="api_v1_delete_user"),
     # Proyectos - Soft delete
+    path("api/v1/projects/", api_v1.list_projects, name="api_v1_list_projects"),
     path("api/v1/projects/<int:project_id>/deactivate/", api_v1.deactivate_project, name="api_v1_deactivate_project"),
     path("api/v1/projects/<int:project_id>/activate/", api_v1.activate_project, name="api_v1_activate_project"),
 ]

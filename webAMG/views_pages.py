@@ -1033,6 +1033,24 @@ def project_activate_page(request, project_id):
         return redirect('project_detail', project_id=project.id)
     
     if request.method == 'POST':
+        password = request.POST.get('password')
+        
+        # Validar que se haya ingresado la contraseña
+        if not password:
+            messages.error(request, 'Debe ingresar su contraseña para reactivar el proyecto.')
+            return render(request, "dashboard/project_activate.html", {
+                 'user': request.user,
+                 'project': project
+               })
+        
+        # Validar la contraseña del usuario
+        if not request.user.check_password(password):
+            messages.error(request, 'Contraseña incorrecta. No se puede reactivar el proyecto.')
+            return render(request, "dashboard/project_activate.html", {
+                'user': request.user,
+                'project': project
+            })
+        
         try:
             project_name = project.project_name 
 
@@ -1045,7 +1063,7 @@ def project_activate_page(request, project_id):
             return redirect('project_detail', project_id=project.id)
         except Exception as e:
             messages.error(request, f'Error al reactivar el proyecto: {str(e)}')
-            return redirect('project_list')
+            return redirect('project_detail', project_id=project.id)
     
     return render(request, "dashboard/project_activate.html", {
         'user': request.user,

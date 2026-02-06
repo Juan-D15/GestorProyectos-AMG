@@ -515,3 +515,57 @@ def activate_project(request, project_id):
     return JsonResponse(
         APIResponse.success(message='Proyecto reactivado exitosamente')
     )
+
+
+@api_endpoint(methods=['GET'], auth_required=False)
+def list_projects(request):
+    """
+    Endpoint para listar proyectos.
+    
+    GET /api/v1/projects/?show_inactive=true
+    
+    Query Parameters:
+        show_inactive (bool): Si es true, devuelve proyectos inactivos. Si es false o no se envía, devuelve activos.
+    
+    Devuelve una lista de proyectos con sus datos básicos.
+    """
+    if not request.user.is_authenticated:
+        raise UnauthorizedError('No autenticado')
+    
+    from webAMG.models import Project
+    
+    show_inactive = request.GET.get('show_inactive', 'false').lower() == 'true'
+    
+    projects_queryset = Project.objects.all()
+    
+    if show_inactive:
+        projects_queryset = projects_queryset.filter(is_active=False)
+    else:
+        projects_queryset = projects_queryset.filter(is_active=True)
+    
+    logger.info(f"API: Buscando proyectos con show_inactive={show_inactive}, total={projects_queryset.count()}")
+    
+    projects_data = []
+    for project in projects_queryset:
+        logger.info(f"API: Proyecto encontrado - ID={project.id}, nombre={project.project_name}, is_active={project.is_active}, deactivated_at={project.deactivated_at}")
+        projects_data.append({
+            'id': project.id,
+            'project_name': project.project_name,
+            'project_code': project.project_code,
+            'department': project.department,
+            'municipality': project.municipality,
+            'status': project.status,
+            'start_date': project.start_date.strftime('%Y-%m-%d') if project.start_date else None,
+            'end_date': project.end_date.strftime('%Y-%m-%d') if project.end_date else None,
+            'is_active': project.is_active,
+            'created_at': project.created_at.strftime('%Y-%m-%d') if project.created_at else None,
+            'updated_at': project.updated_at.strftime('%Y-%m-%d') if project.updated_at else None,
+            'deactivated_at': project.deactivated_at.strftime('%Y-%m-%d %H:%M:%S') if project.deactivated_at else None
+        })
+    
+    return JsonResponse(
+        APIResponse.success(
+            data={'projects': projects_data},
+            message=f'Se encontraron {len(projects_data)} proyectos'
+        )
+    )

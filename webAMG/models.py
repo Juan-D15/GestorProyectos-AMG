@@ -364,6 +364,7 @@ class Project(models.Model):
     has_phases = models.BooleanField(default=False)
     progress_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     is_active = models.BooleanField(default=True)
+    deactivated_at = models.DateTimeField(blank=True, null=True)
     beneficiaries = models.ManyToManyField(
         'Beneficiary',
         blank=True,
