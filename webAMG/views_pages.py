@@ -502,11 +502,18 @@ def project_create_page(request):
 def project_list_page(request):
     """
     Vista para listar todos los proyectos con filtros.
+    Por defecto muestra solo proyectos activos (is_active=True).
     """
     from webAMG.models import Project
-
-    projects = Project.objects.all().order_by('-created_at')
-
+    
+    # Por defecto, solo mostrar proyectos activos
+    show_inactive = request.GET.get('show_inactive', 'false').lower() == 'true'
+    
+    if show_inactive:
+        projects = Project.objects.all().order_by('-updated_at')
+    else:
+        projects = Project.objects.filter(is_active=True).order_by('-created_at')
+ 
     # Filtros
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
@@ -515,21 +522,21 @@ def project_list_page(request):
     filter_department = request.GET.get('filter_department', '')
     filter_municipality = request.GET.get('filter_municipality', '')
     filter_year = request.GET.get('filter_year', '')
-
+ 
     if search_query:
         projects = projects.filter(
             models.Q(project_name__icontains=search_query) |
             models.Q(project_code__icontains=search_query) |
             models.Q(location__icontains=search_query)
         )
-
+ 
     if status_filter:
         projects = projects.filter(status=status_filter)
-
+ 
     # Filtro por rango de fechas
     if filter_start_date or filter_end_date:
         from django.db.models import Q
-
+ 
         try:
             if filter_start_date and filter_end_date:
                 # Filtro por rango completo: proyectos que empiezan o terminan en el rango
@@ -556,8 +563,8 @@ def project_list_page(request):
                 )
         except ValueError:
             print('Error al procesar fechas del filtro')
-            pass
-
+            pass 
+ 
     # Filtro por año
     if filter_year:
         try:
@@ -565,24 +572,24 @@ def project_list_page(request):
             if year > 0 and year <= 2100:
                 projects = projects.filter(start_date__year=year)
         except ValueError:
-            pass
-
+            pass 
+ 
     # Filtro por departamento
     if filter_department:
         projects = projects.filter(department__icontains=filter_department)
-
+ 
     # Filtro por municipio
     if filter_municipality:
         projects = projects.filter(municipality__icontains=filter_municipality)
-
+ 
     # Obtener listas únicas de departamentos y municipios
     departments = Project.objects.values_list('department', flat=True).distinct().exclude(department='').exclude(department=None).order_by('department')
     municipalities = Project.objects.values_list('municipality', flat=True).distinct().exclude(municipality='').exclude(municipality=None).order_by('municipality')
-
+ 
     # Si hay un departamento seleccionado, filtrar municipios por ese departamento
     if filter_department:
         municipalities = Project.objects.filter(department=filter_department).values_list('municipality', flat=True).distinct().exclude(municipality='').exclude(municipality=None).order_by('municipality')
-
+ 
     context = {
         'user': request.user,
         'projects': projects,
@@ -595,8 +602,9 @@ def project_list_page(request):
         'filter_year': filter_year,
         'departments': departments,
         'municipalities': municipalities,
+        'show_inactive': show_inactive,
     }
-
+ 
     return render(request, "dashboard/project_list.html", context)
 
 
@@ -952,72 +960,94 @@ def project_edit_page(request, project_id):
 @login_required
 def project_delete_page(request, project_id):
     """
-    Vista para eliminar un proyecto.
-    Requiere validación de contraseña.
+    Vista para desactivar (soft delete) un proyecto.
+    Requiere validación de contraseña y rol de administrador.
     """
-    import os
-    from django.conf import settings
     from webAMG.models import Project
     
     project = get_object_or_404(Project, id=project_id)
+    
+    # Verificar que el usuario sea administrador
+    if not request.user.is_admin():
+        messages.error(request, 'Solo los administradores pueden desactivar proyectos.')
+        return redirect('project_detail', project_id=project.id)
     
     if request.method == 'POST':
         password = request.POST.get('password')
         
         # Validar que se haya ingresado la contraseña
         if not password:
-            messages.error(request, 'Debe ingresar su contraseña para eliminar el proyecto.')
+            messages.error(request, 'Debe ingresar su contraseña para desactivar el proyecto.')
             return render(request, "dashboard/project_delete.html", {
                  'user': request.user,
                  'project': project
-              })
+               })
         
         # Validar la contraseña del usuario
         if not request.user.check_password(password):
-            messages.error(request, 'Contraseña incorrecta. No se puede eliminar el proyecto.')
+            messages.error(request, 'Contraseña incorrecta. No se puede desactivar el proyecto.')
             return render(request, "dashboard/project_delete.html", {
                 'user': request.user,
                 'project': project
             })
         
         try:
-            project_name = project.project_name
+            project_name = project.project_name 
 
-            # Eliminar las imágenes de las evidencias de proyecto
-            from webAMG.models import EvidencePhoto
-            for evidence in project.evidences.all():
-                for photo in evidence.photos.all():
-                    file_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        print(f'Foto de evidencia eliminada: {photo.photo_url}')
-
-            # Eliminar las imágenes de las evidencias de fases
-            from webAMG.models import PhaseEvidence, PhaseEvidencePhoto
-            for phase in project.phases.all():
-                for evidence in phase.evidences.all():
-                    for photo in evidence.photos.all():
-                        file_path = os.path.join(settings.MEDIA_ROOT, photo.photo_url)
-                        if os.path.exists(file_path):
-                            os.remove(file_path)
-                            print(f'Foto de evidencia de fase eliminada: {photo.photo_url}')
-
-            # Eliminar la imagen de portada si existe
-            if project.cover_image_url:
-                image_path = os.path.join(settings.MEDIA_ROOT, project.cover_image_url)
-                if os.path.exists(image_path):
-                    os.remove(image_path)
-                    print(f'Imagen de portada eliminada: {image_path}')
-
-            # Eliminar el proyecto
-            project.delete()
-            messages.success(request, f'Proyecto "{project_name}" eliminado exitosamente.')
+            # Soft delete: marcar como inactivo en lugar de eliminar
+            # El trigger de PostgreSQL propagará el estado a todas las tablas relacionadas
+            project.is_active = False
+            project.save()
+            
+            messages.success(request, f'Proyecto "{project_name}" desactivado exitosamente. Todos sus datos relacionados también se han ocultado.')
             return redirect('project_list')
         except Exception as e:
-            messages.error(request, f'Error al eliminar el proyecto: {str(e)}')
+            messages.error(request, f'Error al desactivar el proyecto: {str(e)}')
             return redirect('project_detail', project_id=project.id)
     
     return render(request, "dashboard/project_delete.html", {
+        'user': request.user,
+        'project': project,
+        'is_soft_delete': True
+    })
+
+
+@login_required
+def project_activate_page(request, project_id):
+    """
+    Vista para reactivar un proyecto previamente desactivado.
+    Requiere rol de administrador.
+    """
+    from webAMG.models import Project
+    
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verificar que el usuario sea administrador
+    if not request.user.is_admin():
+        messages.error(request, 'Solo los administradores pueden reactivar proyectos.')
+        return redirect('project_list')
+    
+    # Verificar que el proyecto esté inactivo
+    if project.is_active:
+        messages.info(request, 'Este proyecto ya está activo.')
+        return redirect('project_detail', project_id=project.id)
+    
+    if request.method == 'POST':
+        try:
+            project_name = project.project_name 
+
+            # Reactivar: marcar como activo
+            # El trigger de PostgreSQL propagará el estado a todas las tablas relacionadas
+            project.is_active = True
+            project.save()
+            
+            messages.success(request, f'Proyecto "{project_name}" reactivado exitosamente. Todos sus datos relacionados son nuevamente visibles.')
+            return redirect('project_detail', project_id=project.id)
+        except Exception as e:
+            messages.error(request, f'Error al reactivar el proyecto: {str(e)}')
+            return redirect('project_list')
+    
+    return render(request, "dashboard/project_activate.html", {
         'user': request.user,
         'project': project
     })

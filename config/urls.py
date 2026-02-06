@@ -29,6 +29,7 @@ urlpatterns = [
     path("dashboard/proyectos/<int:project_id>/", views_pages.project_detail_page, name="project_detail"),
     path("dashboard/proyectos/<int:project_id>/editar/", views_pages.project_edit_page, name="project_edit"),
     path("dashboard/proyectos/<int:project_id>/eliminar/", views_pages.project_delete_page, name="project_delete"),
+    path("dashboard/proyectos/<int:project_id>/reactivar/", views_pages.project_activate_page, name="project_activate"),
     path("dashboard/proyectos/<int:project_id>/evidencias/agregar/", views_pages.project_evidence_add, name="project_evidence_add"),
     path("dashboard/proyectos/<int:project_id>/evidencias/<int:evidence_id>/editar/", views_pages.project_evidence_edit, name="project_evidence_edit"),
     path("dashboard/proyectos/<int:project_id>/evidencias/<int:evidence_id>/eliminar/", views_pages.project_evidence_delete, name="project_evidence_delete"),
