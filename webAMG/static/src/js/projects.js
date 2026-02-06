@@ -179,3 +179,132 @@ function removeCoverImage() {
     preview.style.maxHeight = '';
     preview.style.maxWidth = '';
 }
+
+// ====================
+// Funciones para Proyectos Inactivos
+// ====================
+
+let showingInactiveProjects = false;
+
+function toggleInactiveProjects() {
+    const activeSection = document.getElementById('activeProjectsSection');
+    const inactiveSection = document.getElementById('inactiveProjectsSection');
+    const showInactiveBtn = document.getElementById('showInactiveBtn');
+    
+    showingInactiveProjects = !showingInactiveProjects;
+    
+    if (showingInactiveProjects) {
+        // Mostrar proyectos inactivos
+        activeSection.classList.add('hidden');
+        inactiveSection.classList.remove('hidden');
+        showInactiveBtn.innerHTML = `
+            <div class="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <i class="fas fa-list text-xl text-green-600"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Ver Activos</h3>
+                <p class="text-sm text-gray-500">Volver a proyectos activos</p>
+            </div>
+        `;
+        loadInactiveProjects();
+    } else {
+        // Mostrar proyectos activos
+        inactiveSection.classList.add('hidden');
+        activeSection.classList.remove('hidden');
+        showInactiveBtn.innerHTML = `
+            <div class="w-12 h-12 rounded-lg bg-gray-500/10 flex items-center justify-center">
+                <i class="fas fa-archive text-xl text-gray-500"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Ver Inactivos</h3>
+                <p class="text-sm text-gray-500">Proyectos desactivados</p>
+            </div>
+        `;
+    }
+}
+
+function loadInactiveProjects() {
+    const tableBody = document.getElementById('inactiveProjectsTableBody');
+    
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="6" class="text-center py-8">
+                <div class="flex items-center justify-center">
+                    <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mr-3"></i>
+                    <span class="text-gray-600">Cargando proyectos...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    fetch(`/api/v1/projects/?show_inactive=true&${urlParams.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.projects && data.data.projects.length > 0) {
+                tableBody.innerHTML = data.data.projects.map(project => `
+                    <tr class="border-b border-gray-200 bg-gray-50">
+                        <td class="py-3 px-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center">
+                                    <i class="fas fa-project-diagram text-gray-500"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-700">${project.project_name}</p>
+                                    ${project.project_code ? `<p class="text-xs text-gray-400">${project.project_code}</p>` : ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <p class="text-sm text-gray-600">
+                                ${project.municipality || 'No especificado'}
+                                ${project.department ? `<br><span class="text-xs">${project.department}</span>` : ''}
+                            </p>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                                ${project.status === 'planificado' ? 'Planificado' : 
+                                  project.status === 'en_progreso' ? 'En Progreso' :
+                                  project.status === 'pausado' ? 'Pausado' :
+                                  project.status === 'completado' ? 'Completado' :
+                                  project.status === 'cancelado' ? 'Cancelado' : project.status}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            <p class="text-sm text-gray-600">${project.updated_at ? new Date(project.updated_at).toLocaleDateString('es-ES') : 'N/A'}</p>
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="flex items-center justify-end space-x-2">
+                                <a href="/dashboard/proyectos/${project.id}/reactivar/" class="px-3 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors">
+                                    <i class="fas fa-undo"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                `.join('');
+            } else {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-12">
+                            <i class="fas fa-inbox text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500">No hay proyectos desactivados</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar proyectos inactivos:', error);
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-8">
+                        <i class="fas fa-exclamation-circle text-2xl text-red-400 mb-3"></i>
+                        <p class="text-red-600">Error al cargar proyectos inactivos</p>
+                    </td>
+                </tr>
+            `;
+        });
+}

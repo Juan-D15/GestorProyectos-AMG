@@ -10,18 +10,27 @@
 {% endblock %}
 
 {% block dashboard_content %}
-<!-- Acciones -->
-<div class="mb-8">
-    <a href="{% url 'project_create' %}" class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 card-hover cursor-pointer inline-flex items-center space-x-4">
-        <div class="w-12 h-12 rounded-lg bg-[#8a4534]/10 flex items-center justify-center">
-            <i class="fas fa-plus text-xl text-[#8a4534]"></i>
-        </div>
-        <div>
-            <h3 class="text-lg font-semibold text-gray-900">Crear Proyecto</h3>
-            <p class="text-sm text-gray-500">Agregar un nuevo proyecto al sistema</p>
-        </div>
-    </a>
-</div>
+ <!-- Acciones -->
+ <div class="flex gap-4 mb-8">
+     <a href="{% url 'project_create' %}" class="flex-1 bg-white rounded-xl p-6 shadow-sm border border-gray-100 card-hover cursor-pointer inline-flex items-center space-x-4">
+         <div class="w-12 h-12 rounded-lg bg-[#8a4534]/10 flex items-center justify-center">
+             <i class="fas fa-plus text-xl text-[#8a4534]"></i>
+         </div>
+         <div>
+             <h3 class="text-lg font-semibold text-gray-900">Crear Proyecto</h3>
+             <p class="text-sm text-gray-500">Agregar un nuevo proyecto al sistema</p>
+         </div>
+     </a>
+     <button onclick="toggleInactiveProjects()" id="showInactiveBtn" class="flex-1 bg-white rounded-xl p-6 shadow-sm border border-gray-100 card-hover cursor-pointer inline-flex items-center space-x-4 transition-colors">
+         <div class="w-12 h-12 rounded-lg bg-gray-500/10 flex items-center justify-center">
+             <i class="fas fa-archive text-xl text-gray-500"></i>
+         </div>
+         <div>
+             <h3 class="text-lg font-semibold text-gray-900">Ver Inactivos</h3>
+             <p class="text-sm text-gray-500">Proyectos desactivados</p>
+         </div>
+     </button>
+ </div>
 
  <!-- Filtros y Búsqueda -->
  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
@@ -139,9 +148,9 @@
      </form>
  </div>
 
-<!-- Lista de Proyectos -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-100">
-    {% if projects %}
+ <!-- Lista de Proyectos -->
+ <div class="bg-white rounded-xl shadow-sm border border-gray-100" id="activeProjectsSection">
+     {% if projects %}
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead>
@@ -220,7 +229,7 @@
                 </tbody>
             </table>
         </div>
-    {% else %}
+     {% else %}
         <div class="py-12 text-center">
             <i class="fas fa-folder-open text-6xl text-gray-300 mb-4"></i>
             <h3 class="text-lg font-semibold text-gray-900 mb-2">No hay proyectos</h3>
@@ -232,10 +241,38 @@
                  {% endif %}
              </p>
              <a href="{% url 'project_create' %}" class="inline-flex items-center space-x-2 px-6 py-3 bg-[#8a4534] hover:bg-[#a05240] text-white font-medium rounded-lg transition-colors">
-                 <i class="fas fa-plus"></i>
-                 <span>Crear Proyecto</span>
+                  <i class="fas fa-plus"></i>
+                  <span>Crear Proyecto</span>
              </a>
-         </div>
+        </div>
      {% endif %}
+ </div>
+
+ <!-- Lista de Proyectos Inactivos (oculto por defecto) -->
+ <div class="bg-white rounded-xl shadow-sm border border-gray-200 hidden mb-6" id="inactiveProjectsSection">
+     <div class="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+         <div class="flex items-center space-x-2">
+             <i class="fas fa-archive text-gray-500"></i>
+             <h3 class="text-lg font-semibold text-gray-900">Proyectos Desactivados</h3>
+         </div>
+         <button onclick="toggleInactiveProjects()" class="px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors">
+             <i class="fas fa-times mr-1"></i>Cerrar
+         </button>
+     </div>
+     <div class="overflow-x-auto">
+         <table class="w-full">
+             <thead>
+                 <tr class="border-b border-gray-200">
+                     <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Proyecto</th>
+                     <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ubicación</th>
+                     <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Estado</th>
+                     <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Fecha Desactivación</th>
+                     <th class="text-right py-3 px-4 text-sm font-semibold text-gray-700">Acciones</th>
+                 </tr>
+             </thead>
+             <tbody id="inactiveProjectsTableBody">
+             </tbody>
+         </table>
+     </div>
  </div>
  {% endblock %}
